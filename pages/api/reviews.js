@@ -26,7 +26,8 @@ export default async function handler(req, res) {
     const {
       property_id, recorded_at, review_count,
       overall_score, cleanliness, facilities,
-      location, service, value_for_money, response_rate
+      location, service, value_for_money, response_rate,
+      staff_friendliness, comfort, free_wifi
     } = req.body;
 
     if (!property_id || !recorded_at || !overall_score) {
@@ -37,12 +38,14 @@ export default async function handler(req, res) {
       const rows = await sql`
         INSERT INTO reviews
           (property_id, recorded_at, review_count, overall_score,
-           cleanliness, facilities, location, service, value_for_money, response_rate)
+           cleanliness, facilities, location, service, value_for_money, response_rate,
+           staff_friendliness, comfort, free_wifi)
         VALUES
           (${property_id}, ${recorded_at}, ${review_count || null},
            ${overall_score}, ${cleanliness || null}, ${facilities || null},
            ${location || null}, ${service || null}, ${value_for_money || null},
-           ${response_rate || null})
+           ${response_rate || null}, ${staff_friendliness || null},
+           ${comfort || null}, ${free_wifi || null})
         ON CONFLICT (property_id, recorded_at)
         DO UPDATE SET
           review_count = EXCLUDED.review_count,
@@ -52,7 +55,10 @@ export default async function handler(req, res) {
           location = EXCLUDED.location,
           service = EXCLUDED.service,
           value_for_money = EXCLUDED.value_for_money,
-          response_rate = EXCLUDED.response_rate
+          response_rate = EXCLUDED.response_rate,
+          staff_friendliness = EXCLUDED.staff_friendliness,
+          comfort = EXCLUDED.comfort,
+          free_wifi = EXCLUDED.free_wifi
         RETURNING *
       `;
       return res.status(201).json(rows[0]);

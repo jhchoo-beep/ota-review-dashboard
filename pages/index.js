@@ -793,7 +793,7 @@ export default function Home() {
         </aside>
 
         {/* Main content */}
-        <main className="main">
+        <main className={`main${!selected ? ' main-welcome' : ''}`}>
           {selected ? (
             <PropertyPanel key={selected.id} property={selected} />
           ) : (

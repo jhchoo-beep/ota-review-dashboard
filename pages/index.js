@@ -20,10 +20,7 @@ const AGODA_FIELDS = [
   { key: 'value_for_money', label: '가격 대비 만족도' },
 ];
 const AIRBNB_FIELDS = [
-  { key: 'cleanliness',     label: '청결' },
-  { key: 'location',        label: '위치' },
-  { key: 'value_for_money', label: '가격 대비 만족도' },
-  { key: 'response_rate',   label: '응답률 (%)' },
+  { key: 'response_rate', label: '응답률 (%)' },
 ];
 
 function today() { return new Date().toISOString().slice(0, 10); }
@@ -258,9 +255,7 @@ function HistoryTable({ reviews, platform, onDelete }) {
             <th>날짜</th>
             <th>리뷰 수</th>
             <th>종합</th>
-            <th>청결</th>
-            {!isAirbnb && <><th>부대시설</th><th>서비스</th><th>가격만족</th></>}
-            <th>위치</th>
+            {!isAirbnb && <><th>청결</th><th>부대시설</th><th>서비스</th><th>가격만족</th><th>위치</th></>}
             {isAirbnb && <th>응답률</th>}
             <th></th>
           </tr>
@@ -271,13 +266,13 @@ function HistoryTable({ reviews, platform, onDelete }) {
               <td>{r.recorded_at?.slice(0, 10)}</td>
               <td>{fmtCount(r.review_count)}</td>
               <td><ScoreBadge value={r.overall_score} max={isAirbnb ? 5 : 10} /></td>
-              <td><ScoreBadge value={r.cleanliness} max={isAirbnb ? 5 : 10} /></td>
               {!isAirbnb && <>
+                <td><ScoreBadge value={r.cleanliness} /></td>
                 <td><ScoreBadge value={r.facilities} /></td>
                 <td><ScoreBadge value={r.service} /></td>
                 <td><ScoreBadge value={r.value_for_money} /></td>
+                <td><ScoreBadge value={r.location} /></td>
               </>}
-              <td><ScoreBadge value={r.location} max={isAirbnb ? 5 : 10} /></td>
               {isAirbnb && <td>{r.response_rate != null ? `${r.response_rate}%` : '—'}</td>}
               <td>
                 <button className="btn-delete" onClick={() => onDelete(r.id)} title="삭제">×</button>
@@ -352,9 +347,9 @@ function PropertyPanel({ property }) {
               <div className="stats-grid">
                 <StatCard label="종합 평점" value={<>{fmtScore(latest.overall_score)}{diffEl('overall_score')}</>} sub={`기준일: ${latest.recorded_at?.slice(0, 10)}`} />
                 <StatCard label="누적 리뷰 수" value={fmtCount(latest.review_count)} />
-                <StatCard label="청결" value={<>{fmtScore(latest.cleanliness)}{diffEl('cleanliness')}</>} />
+                {!isAirbnb && <StatCard label="청결" value={<>{fmtScore(latest.cleanliness)}{diffEl('cleanliness')}</>} />}
                 {!isAirbnb && <StatCard label="서비스" value={<>{fmtScore(latest.service)}{diffEl('service')}</>} />}
-                <StatCard label="위치" value={<>{fmtScore(latest.location)}{diffEl('location')}</>} />
+                {!isAirbnb && <StatCard label="위치" value={<>{fmtScore(latest.location)}{diffEl('location')}</>} />}
                 {isAirbnb && <StatCard label="응답률" value={latest.response_rate != null ? `${latest.response_rate}%` : '—'} />}
                 {!isAirbnb && <StatCard label="가격 만족도" value={<>{fmtScore(latest.value_for_money)}{diffEl('value_for_money')}</>} />}
               </div>

@@ -660,11 +660,11 @@ export default function Home() {
   const [newName, setNewName] = useState('');
   const [newPlatform, setNewPlatform] = useState('agoda');
   const [addStatus, setAddStatus] = useState('idle');
-  const [isReordering, setIsReordering] = useState(false);
+  const [reorderingGroup, setReorderingGroup] = useState(null); // 현재 순서 변경 중인 그룹명
   const dragItem = useRef(null);
   const dragOver = useRef(null);
 
-  // 그룹 단위 순서 목록 (드래그용)
+  // 그룹 단위 목록
   const groupList = (() => {
     const seen = [];
     const map = {};
@@ -677,22 +677,25 @@ export default function Home() {
 
   const handleDragStart = (idx) => { dragItem.current = idx; };
   const handleDragEnter = (idx) => { dragOver.current = idx; };
-  const handleDragEnd = async () => {
+
+  // 그룹 내 OTA 순서 변경
+  const handleDragEnd = async (groupName) => {
     if (dragItem.current === null || dragOver.current === null || dragItem.current === dragOver.current) {
       dragItem.current = null; dragOver.current = null; return;
     }
-    const newGroups = [...groupList];
-    const dragged = newGroups.splice(dragItem.current, 1)[0];
-    newGroups.splice(dragOver.current, 0, dragged);
+    const grp = groupList.find(g => g.name === groupName);
+    if (!grp) return;
+    const newItems = [...grp.items];
+    const dragged = newItems.splice(dragItem.current, 1)[0];
+    newItems.splice(dragOver.current, 0, dragged);
     dragItem.current = null; dragOver.current = null;
 
-    // 순서 재계산: 그룹 내 플랫폼은 기존 순서 유지
-    const orders = [];
-    newGroups.forEach((grp, gi) => {
-      grp.items.forEach((p, pi) => {
-        orders.push({ id: p.id, sort_order: gi * 100 + pi });
-      });
-    });
+    // 해당 그룹의 sort_order만 업데이트
+    const groupIdx = groupList.findIndex(g => g.name === groupName);
+    const orders = newItems.map((p, pi) => ({
+      id: p.id,
+      sort_order: groupIdx * 100 + pi,
+    }));
     await fetch('/api/properties', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -746,48 +749,52 @@ export default function Home() {
           <nav className="property-nav">
             <div className="nav-label-row">
               <span className="nav-label">지점 목록</span>
-              <button
-                className={`nav-reorder-btn ${isReordering ? 'active' : ''}`}
-                onClick={() => setIsReordering(v => !v)}
-                title="순서 변경"
-              >
-                {isReordering ? '완료' : '순서변경'}
-              </button>
             </div>
-            {groupList.map((grp, gi) => (
-              <div
-                key={grp.name}
-                className={`nav-group ${isReordering ? 'draggable' : ''}`}
-                draggable={isReordering}
-                onDragStart={() => handleDragStart(gi)}
-                onDragEnter={() => handleDragEnter(gi)}
-                onDragEnd={handleDragEnd}
-                onDragOver={e => e.preventDefault()}
-              >
-                {isReordering && (
-                  <span className="drag-handle">⠿</span>
-                )}
-                {grp.items.length > 1 && (
-                  <div className="nav-group-label">{grp.name}</div>
-                )}
-                {grp.items.map(p => (
-                  <button
-                    key={p.id}
-                    className={`nav-item ${selected?.id === p.id ? 'active' : ''} ${grp.items.length > 1 ? 'indented' : ''}`}
-                    onClick={() => !isReordering && setSelected(p)}
-                  >
-                    <span className="nav-dot" style={{ background: PLATFORM_COLOR[p.platform] }} />
-                    <span className="nav-name">{grp.items.length > 1 ? PLATFORM_LABEL[p.platform] : p.name}</span>
-                    {grp.items.length === 1 && <span className="nav-platform">{PLATFORM_LABEL[p.platform]}</span>}
-                  </button>
-                ))}
-              </div>
-            ))}
-            {!isReordering && (
-              <button className="nav-add" onClick={() => setShowAddModal(true)}>
-                + 지점 추가
-              </button>
-            )}
+            {groupList.map((grp, gi) => {
+              const isThisReordering = reorderingGroup === grp.name;
+              return (
+                <div key={grp.name} className="nav-group">
+                  {/* 지점명 + 순서변경 버튼 (OTA가 2개 이상일 때만) */}
+                  {grp.items.length > 1 && (
+                    <div className="nav-group-header">
+                      <div className="nav-group-label">{grp.name}</div>
+                      <button
+                        className={`nav-reorder-btn ${isThisReordering ? 'active' : ''}`}
+                        onClick={() => setReorderingGroup(isThisReordering ? null : grp.name)}
+                      >
+                        {isThisReordering ? '완료' : '순서'}
+                      </button>
+                    </div>
+                  )}
+                  {/* OTA 항목들 */}
+                  {grp.items.map((p, pi) => (
+                    <div
+                      key={p.id}
+                      className={`nav-item-wrap ${isThisReordering ? 'draggable' : ''}`}
+                      draggable={isThisReordering}
+                      onDragStart={() => handleDragStart(pi)}
+                      onDragEnter={() => handleDragEnter(pi)}
+                      onDragEnd={() => handleDragEnd(grp.name)}
+                      onDragOver={e => e.preventDefault()}
+                    >
+                      {isThisReordering && <span className="drag-handle">⠿</span>}
+                      <button
+                        className={`nav-item ${selected?.id === p.id ? 'active' : ''} ${grp.items.length > 1 ? 'indented' : ''}`}
+                        onClick={() => !isThisReordering && setSelected(p)}
+                        style={{ flex: 1 }}
+                      >
+                        <span className="nav-dot" style={{ background: PLATFORM_COLOR[p.platform] }} />
+                        <span className="nav-name">{grp.items.length > 1 ? PLATFORM_LABEL[p.platform] : p.name}</span>
+                        {grp.items.length === 1 && <span className="nav-platform">{PLATFORM_LABEL[p.platform]}</span>}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+            <button className="nav-add" onClick={() => setShowAddModal(true)}>
+              + 지점 추가
+            </button>
           </nav>
         </aside>
 

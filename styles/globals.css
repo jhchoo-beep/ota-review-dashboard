@@ -609,22 +609,26 @@ body {
     gap: 8px;
   }
 
-  /* 사이드바 — 기본은 숨김, 열리면 전체화면 덮음 */
+  /* 사이드바 — 기본은 화면 왼쪽 밖에 숨김 */
   .sidebar {
     transform: translateX(-100%);
     transition: transform 0.25s ease;
-    z-index: 300;
-    top: 0;
-    width: 100%;
-    height: 100%;
+    z-index: 9999 !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    position: fixed !important;
   }
+  /* 열렸을 때 전체화면 덮음 */
   .sidebar.sidebar-open {
     transform: translateX(0);
   }
 
-  /* PC용 사이드바 로고는 모바일에서 숨김 (헤더에 표시) */
+  /* PC용 사이드바 로고는 모바일에서도 표시 */
   .sidebar .sidebar-logo {
-    display: none;
+    display: flex;
   }
 
   /* 오버레이 */

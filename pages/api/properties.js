@@ -9,7 +9,7 @@ export default async function handler(req, res) {
   const sql = getDb();
 
   if (req.method === 'GET') {
-    const rows = await sql`SELECT * FROM properties ORDER BY id`;
+    const rows = await sql`SELECT * FROM properties ORDER BY name, platform`;
     return res.status(200).json(rows);
   }
 
@@ -23,7 +23,7 @@ export default async function handler(req, res) {
       `;
       return res.status(201).json(rows[0]);
     } catch (e) {
-      return res.status(409).json({ error: '이미 존재하는 지점입니다' });
+      return res.status(409).json({ error: '이미 존재하는 지점+플랫폼 조합입니다' });
     }
   }
 

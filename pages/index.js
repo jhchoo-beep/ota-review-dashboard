@@ -658,11 +658,16 @@ export default function Home() {
   const [selected, setSelected] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newName, setNewName] = useState('');
+  const [newNameCustom, setNewNameCustom] = useState('');
+  const [isCustomName, setIsCustomName] = useState(false);
   const [newPlatform, setNewPlatform] = useState('agoda');
   const [addStatus, setAddStatus] = useState('idle');
-  const [reorderingGroup, setReorderingGroup] = useState(null); // 현재 순서 변경 중인 그룹명
+  const [reorderingGroup, setReorderingGroup] = useState(null);
   const dragItem = useRef(null);
   const dragOver = useRef(null);
+
+  // 고정 지점 목록 + 현재 DB에 있는 지점도 포함
+  const FIXED_PROPERTIES = ['맹그로브 신설', '맹그로브 동대문', '맹그로브 고성', '맹그로브 제주시티'];
 
   // 그룹 단위 목록
   const groupList = (() => {
@@ -714,8 +719,10 @@ export default function Home() {
 
   const addProperty = async (e) => {
     e.preventDefault();
+    const finalName = isCustomName ? newNameCustom : newName;
+    if (!finalName) return;
     setAddStatus('loading');
-    const res = await fetch('/api/properties', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: newName, platform: newPlatform }) });
+    const res = await fetch('/api/properties', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: finalName, platform: newPlatform }) });
     const data = await res.json();
     if (res.ok) {
       const updated = await fetch('/api/properties').then(r => r.json());
@@ -723,6 +730,8 @@ export default function Home() {
       setSelected(updated.find(p => p.id === data.id));
       setShowAddModal(false);
       setNewName('');
+      setNewNameCustom('');
+      setIsCustomName(false);
       setAddStatus('idle');
     } else {
       setAddStatus('error');
@@ -813,14 +822,50 @@ export default function Home() {
 
       {/* Add property modal */}
       {showAddModal && (
-        <div className="modal-bg" onClick={() => setShowAddModal(false)}>
+        <div className="modal-bg" onClick={() => { setShowAddModal(false); setIsCustomName(false); setNewName(''); setNewNameCustom(''); }}>
           <div className="modal" onClick={e => e.stopPropagation()}>
-            <h3 className="modal-title">지점 추가</h3>
+            <h3 className="modal-title">OTA 추가</h3>
             <form onSubmit={addProperty}>
               <div className="form-field" style={{ marginBottom: '12px' }}>
-                <label>지점명</label>
-                <input type="text" placeholder="예: 맹그로브 고성" value={newName} onChange={e => setNewName(e.target.value)} required />
+                <label>지점 선택</label>
+                <select
+                  value={isCustomName ? '__custom__' : newName}
+                  onChange={e => {
+                    if (e.target.value === '__custom__') {
+                      setIsCustomName(true);
+                      setNewName('');
+                    } else {
+                      setIsCustomName(false);
+                      setNewName(e.target.value);
+                    }
+                  }}
+                  required={!isCustomName}
+                >
+                  <option value="">-- 지점을 선택하세요 --</option>
+                  {(() => {
+                    // 고정 목록 + DB에 있는 지점 중 고정 목록에 없는 것 합치기
+                    const dbNames = [...new Set(properties.map(p => p.name))];
+                    const extras = dbNames.filter(n => !FIXED_PROPERTIES.includes(n));
+                    return [...FIXED_PROPERTIES, ...extras].map(n => (
+                      <option key={n} value={n}>{n}</option>
+                    ));
+                  })()}
+                  <option value="__custom__">+ 새 지점 직접 입력</option>
+                </select>
               </div>
+              {isCustomName && (
+                <div className="form-field" style={{ marginBottom: '12px' }}>
+                  <label>새 지점명 입력</label>
+                  <input
+                    type="text"
+                    placeholder="예: 맹그로브 부산"
+                    value={newNameCustom}
+                    onChange={e => setNewNameCustom(e.target.value)}
+                    required
+                    autoFocus
+                  />
+                </div>
+              )}
               <div className="form-field" style={{ marginBottom: '20px' }}>
                 <label>플랫폼</label>
                 <select value={newPlatform} onChange={e => setNewPlatform(e.target.value)}>
@@ -835,12 +880,12 @@ export default function Home() {
                 </select>
               </div>
               <div className="form-actions">
-                <button type="button" className="btn-ghost" onClick={() => setShowAddModal(false)}>취소</button>
-                <button type="submit" className="btn-primary" disabled={addStatus === 'loading'}>
+                <button type="button" className="btn-ghost" onClick={() => { setShowAddModal(false); setIsCustomName(false); setNewName(''); setNewNameCustom(''); }}>취소</button>
+                <button type="submit" className="btn-primary" disabled={addStatus === 'loading' || (!newName && !newNameCustom)}>
                   {addStatus === 'loading' ? '추가 중...' : '추가'}
                 </button>
               </div>
-              {addStatus === 'error' && <p className="form-status error" style={{ marginTop: '8px' }}>이미 존재하는 지점입니다</p>}
+              {addStatus === 'error' && <p className="form-status error" style={{ marginTop: '8px' }}>이미 존재하는 지점+플랫폼 조합입니다</p>}
             </form>
           </div>
         </div>

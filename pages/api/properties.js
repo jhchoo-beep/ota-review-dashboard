@@ -9,7 +9,7 @@ export default async function handler(req, res) {
   const sql = getDb();
 
   if (req.method === 'GET') {
-    const rows = await sql`SELECT * FROM properties ORDER BY name, platform`;
+    const rows = await sql`SELECT * FROM properties ORDER BY sort_order, name, platform`;
     return res.status(200).json(rows);
   }
 

@@ -811,8 +811,7 @@ export default function Home() {
                 <div className="welcome-divider" />
                 <p className="welcome-hint">
                   <span className="welcome-arrow">←</span>
-                  좌측 목록에서 <strong>지점</strong>과 <strong>OTA 플랫폼</strong>을 선택하면<br />
-                  평점 현황과 추이를 확인할 수 있습니다
+                  좌측 목록에서 <strong>지점</strong>과 <strong>OTA 플랫폼</strong>을 선택하면 평점 현황과 추이를 확인할 수 있습니다
                 </p>
                 <div className="welcome-cards">
                   {['Agoda', 'Airbnb', 'Booking.com', 'Trip.com', 'Expedia', 'NOL', '여기어때', 'Meta-Search'].map((ota, i) => (

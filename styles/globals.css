@@ -805,10 +805,13 @@ body {
 }
 .welcome-cards {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 8px;
   justify-content: center;
+  overflow-x: auto;
+  padding-bottom: 4px;
 }
+.welcome-cards::-webkit-scrollbar { display: none; }
 .welcome-ota-badge {
   font-size: 12px;
   font-weight: 500;

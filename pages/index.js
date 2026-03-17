@@ -702,7 +702,7 @@ export default function Home() {
   useEffect(() => {
     fetch('/api/properties')
       .then(r => r.json())
-      .then(data => { setProperties(data); if (data.length) setSelected(data[0]); });
+      .then(data => { setProperties(data); });
   }, []);
 
   const addProperty = async (e) => {
@@ -797,8 +797,27 @@ export default function Home() {
           {selected ? (
             <PropertyPanel key={selected.id} property={selected} />
           ) : (
-            <div className="empty-state full">
-              <p>좌측에서 지점을 선택하세요</p>
+            <div className="welcome-page">
+              <div className="welcome-inner">
+                <div className="welcome-logo-wrap">
+                  <span className="welcome-logo-mark">OTA</span>
+                </div>
+                <h1 className="welcome-title">맹그로브 리뷰 대시보드</h1>
+                <p className="welcome-desc">각 지점의 OTA 리뷰 점수를 한눈에 확인하고 관리하세요</p>
+                <div className="welcome-divider" />
+                <p className="welcome-hint">
+                  <span className="welcome-arrow">←</span>
+                  좌측 목록에서 <strong>지점</strong>과 <strong>OTA 플랫폼</strong>을 선택하면<br />
+                  평점 현황과 추이를 확인할 수 있습니다
+                </p>
+                <div className="welcome-cards">
+                  {['Agoda', 'Airbnb', 'Booking.com', 'Trip.com', 'Expedia', 'NOL', '여기어때', 'Meta-Search'].map((ota, i) => (
+                    <span key={ota} className="welcome-ota-badge" style={{ background: Object.values(PLATFORM_COLOR)[i % Object.values(PLATFORM_COLOR).length] + '18', color: Object.values(PLATFORM_COLOR)[i % Object.values(PLATFORM_COLOR).length] }}>
+                      {ota}
+                    </span>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
         </main>

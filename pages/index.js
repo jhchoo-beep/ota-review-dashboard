@@ -9,8 +9,8 @@ import { Line } from 'react-chartjs-2';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend, Filler);
 
-const PLATFORM_LABEL = { agoda: 'Agoda', airbnb: 'Airbnb' };
-const PLATFORM_COLOR = { agoda: '#E84393', airbnb: '#FF5A5F' };
+const PLATFORM_LABEL = { agoda: 'Agoda', airbnb: 'Airbnb', booking: 'Booking.com' };
+const PLATFORM_COLOR = { agoda: '#E84393', airbnb: '#FF5A5F', booking: '#003580' };
 
 const AGODA_FIELDS = [
   { key: 'cleanliness',     label: '청결' },
@@ -21,6 +21,16 @@ const AGODA_FIELDS = [
 ];
 const AIRBNB_FIELDS = [
   { key: 'response_rate', label: '응답률 (%)' },
+];
+
+const BOOKING_FIELDS = [
+  { key: 'staff_friendliness', label: '직원 친절도' },
+  { key: 'facilities',         label: '시설' },
+  { key: 'cleanliness',        label: '청결도' },
+  { key: 'comfort',            label: '편안함' },
+  { key: 'value_for_money',    label: '가성비' },
+  { key: 'location',           label: '위치' },
+  { key: 'free_wifi',          label: '무료 Wi-Fi' },
 ];
 
 function today() { return new Date().toISOString().slice(0, 10); }
@@ -54,10 +64,11 @@ function StatCard({ label, value, sub }) {
 // ── Review Form ──────────────────────────────────────
 function ReviewForm({ property, onSaved }) {
   const isAirbnb = property.platform === 'airbnb';
-  const fields = isAirbnb ? AIRBNB_FIELDS : AGODA_FIELDS;
-  const maxScore = isAirbnb ? 5 : 10;
+  const isBooking = property.platform === 'booking';
+  const fields = isAirbnb ? AIRBNB_FIELDS : isBooking ? BOOKING_FIELDS : AGODA_FIELDS;
+  const maxScore = isAirbnb ? 10 : 10;
 
-  const [form, setForm] = useState({ recorded_at: today(), review_count: '', overall_score: '', response_rate: '', cleanliness: '', facilities: '', location: '', service: '', value_for_money: '' });
+  const [form, setForm] = useState({ recorded_at: today(), review_count: '', overall_score: '', response_rate: '', cleanliness: '', facilities: '', location: '', service: '', value_for_money: '', staff_friendliness: '', comfort: '', free_wifi: '' });
   const [status, setStatus] = useState('idle'); // idle | loading | ok | error
   const [errMsg, setErrMsg] = useState('');
 
@@ -132,6 +143,7 @@ function ReviewForm({ property, onSaved }) {
 // ── Chart ────────────────────────────────────────────
 function ReviewChart({ reviews, platform }) {
   const isAirbnb = platform === 'airbnb';
+  const isBooking = platform === 'booking';
   const sorted = [...reviews].sort((a, b) => a.recorded_at.localeCompare(b.recorded_at));
   const labels = sorted.map(r => r.recorded_at?.slice(0, 10) ?? '');
   const accent = PLATFORM_COLOR[platform];
@@ -151,13 +163,23 @@ function ReviewChart({ reviews, platform }) {
   ];
 
   if (!isAirbnb) {
-    const extras = [
-      { key: 'cleanliness',     label: '청결',          color: '#6366f1' },
-      { key: 'facilities',      label: '부대시설',       color: '#22c55e' },
-      { key: 'location',        label: '위치',           color: '#f59e0b' },
-      { key: 'service',         label: '서비스',         color: '#ef4444' },
-      { key: 'value_for_money', label: '가격 만족도',    color: '#14b8a6' },
+    const agodaExtras = [
+      { key: 'cleanliness',     label: '청결',       color: '#6366f1' },
+      { key: 'facilities',      label: '부대시설',    color: '#22c55e' },
+      { key: 'location',        label: '위치',        color: '#f59e0b' },
+      { key: 'service',         label: '서비스',      color: '#ef4444' },
+      { key: 'value_for_money', label: '가격 만족도', color: '#14b8a6' },
     ];
+    const bookingExtras = [
+      { key: 'staff_friendliness', label: '직원 친절도', color: '#6366f1' },
+      { key: 'facilities',         label: '시설',        color: '#22c55e' },
+      { key: 'cleanliness',        label: '청결도',      color: '#f59e0b' },
+      { key: 'comfort',            label: '편안함',      color: '#ef4444' },
+      { key: 'value_for_money',    label: '가성비',      color: '#14b8a6' },
+      { key: 'location',           label: '위치',        color: '#8b5cf6' },
+      { key: 'free_wifi',          label: '무료 Wi-Fi',  color: '#0ea5e9' },
+    ];
+    const extras = isBooking ? bookingExtras : agodaExtras;
     extras.forEach(({ key, label, color }) => {
       datasets.push({
         label,
@@ -245,6 +267,7 @@ function ReviewCountChart({ reviews }) {
 // ── History Table ────────────────────────────────────
 function HistoryTable({ reviews, platform, onDelete }) {
   const isAirbnb = platform === 'airbnb';
+  const isBooking = platform === 'booking';
   const sorted = [...reviews].sort((a, b) => b.recorded_at.localeCompare(a.recorded_at));
 
   if (!sorted.length) return <p className="empty-msg">아직 기록이 없습니다</p>;
@@ -257,8 +280,9 @@ function HistoryTable({ reviews, platform, onDelete }) {
             <th>날짜</th>
             <th>리뷰 수</th>
             <th>종합</th>
-            {!isAirbnb && <><th>청결</th><th>부대시설</th><th>서비스</th><th>가격만족</th><th>위치</th></>}
+            {!isAirbnb && !isBooking && <><th>청결</th><th>부대시설</th><th>서비스</th><th>가격만족</th><th>위치</th></>}
             {isAirbnb && <th>응답률</th>}
+            {isBooking && <><th>친절도</th><th>시설</th><th>청결도</th><th>편안함</th><th>가성비</th><th>위치</th><th>Wi-Fi</th></>}
             <th></th>
           </tr>
         </thead>
@@ -267,8 +291,8 @@ function HistoryTable({ reviews, platform, onDelete }) {
             <tr key={r.id}>
               <td>{r.recorded_at?.slice(0, 10)}</td>
               <td>{fmtCount(r.review_count)}</td>
-              <td><ScoreBadge value={r.overall_score} max={isAirbnb ? 5 : 10} /></td>
-              {!isAirbnb && <>
+              <td><ScoreBadge value={r.overall_score} /></td>
+              {!isAirbnb && !isBooking && <>
                 <td><ScoreBadge value={r.cleanliness} /></td>
                 <td><ScoreBadge value={r.facilities} /></td>
                 <td><ScoreBadge value={r.service} /></td>
@@ -276,6 +300,15 @@ function HistoryTable({ reviews, platform, onDelete }) {
                 <td><ScoreBadge value={r.location} /></td>
               </>}
               {isAirbnb && <td>{r.response_rate != null ? `${r.response_rate}%` : '—'}</td>}
+              {isBooking && <>
+                <td><ScoreBadge value={r.staff_friendliness} /></td>
+                <td><ScoreBadge value={r.facilities} /></td>
+                <td><ScoreBadge value={r.cleanliness} /></td>
+                <td><ScoreBadge value={r.comfort} /></td>
+                <td><ScoreBadge value={r.value_for_money} /></td>
+                <td><ScoreBadge value={r.location} /></td>
+                <td><ScoreBadge value={r.free_wifi} /></td>
+              </>}
               <td>
                 <button className="btn-delete" onClick={() => onDelete(r.id)} title="삭제">×</button>
               </td>
@@ -307,6 +340,7 @@ function PropertyPanel({ property }) {
   };
 
   const isAirbnb = property.platform === 'airbnb';
+  const isBooking = property.platform === 'booking';
   const latest = reviews[0];
   const prev = reviews[1];
   const accent = PLATFORM_COLOR[property.platform];
@@ -358,12 +392,22 @@ function PropertyPanel({ property }) {
               <div className="stats-grid">
                 <StatCard label="종합 평점" value={<>{fmtScore(latest.overall_score)}{diffEl('overall_score')}</>} sub={`기준일: ${latest.recorded_at?.slice(0, 10)}`} />
                 <StatCard label="누적 리뷰 수" value={fmtCount(latest.review_count)} />
-                {!isAirbnb && <StatCard label="청결" value={<>{fmtScore(latest.cleanliness)}{diffEl('cleanliness')}</>} />}
-                {!isAirbnb && <StatCard label="부대시설" value={<>{fmtScore(latest.facilities)}{diffEl('facilities')}</>} />}
-                {!isAirbnb && <StatCard label="위치" value={<>{fmtScore(latest.location)}{diffEl('location')}</>} />}
-                {!isAirbnb && <StatCard label="서비스" value={<>{fmtScore(latest.service)}{diffEl('service')}</>} />}
+                {/* Agoda 전용 */}
+                {!isAirbnb && !isBooking && <StatCard label="청결" value={<>{fmtScore(latest.cleanliness)}{diffEl('cleanliness')}</>} />}
+                {!isAirbnb && !isBooking && <StatCard label="부대시설" value={<>{fmtScore(latest.facilities)}{diffEl('facilities')}</>} />}
+                {!isAirbnb && !isBooking && <StatCard label="위치" value={<>{fmtScore(latest.location)}{diffEl('location')}</>} />}
+                {!isAirbnb && !isBooking && <StatCard label="서비스" value={<>{fmtScore(latest.service)}{diffEl('service')}</>} />}
+                {!isAirbnb && !isBooking && <StatCard label="가격 만족도" value={<>{fmtScore(latest.value_for_money)}{diffEl('value_for_money')}</>} />}
+                {/* Airbnb 전용 */}
                 {isAirbnb && <StatCard label="응답률" value={latest.response_rate != null ? `${latest.response_rate}%` : '—'} />}
-                {!isAirbnb && <StatCard label="가격 만족도" value={<>{fmtScore(latest.value_for_money)}{diffEl('value_for_money')}</>} />}
+                {/* Booking.com 전용 */}
+                {isBooking && <StatCard label="직원 친절도" value={<>{fmtScore(latest.staff_friendliness)}{diffEl('staff_friendliness')}</>} />}
+                {isBooking && <StatCard label="시설" value={<>{fmtScore(latest.facilities)}{diffEl('facilities')}</>} />}
+                {isBooking && <StatCard label="청결도" value={<>{fmtScore(latest.cleanliness)}{diffEl('cleanliness')}</>} />}
+                {isBooking && <StatCard label="편안함" value={<>{fmtScore(latest.comfort)}{diffEl('comfort')}</>} />}
+                {isBooking && <StatCard label="가성비" value={<>{fmtScore(latest.value_for_money)}{diffEl('value_for_money')}</>} />}
+                {isBooking && <StatCard label="위치" value={<>{fmtScore(latest.location)}{diffEl('location')}</>} />}
+                {isBooking && <StatCard label="무료 Wi-Fi" value={<>{fmtScore(latest.free_wifi)}{diffEl('free_wifi')}</>} />}
               </div>
               {reviews.length >= 2 && (
                 <>
@@ -515,6 +559,7 @@ export default function Home() {
                 <select value={newPlatform} onChange={e => setNewPlatform(e.target.value)}>
                   <option value="agoda">Agoda</option>
                   <option value="airbnb">Airbnb</option>
+                  <option value="booking">Booking.com</option>
                 </select>
               </div>
               <div className="form-actions">

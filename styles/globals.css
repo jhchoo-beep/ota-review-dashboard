@@ -119,6 +119,15 @@ body {
 }
 .nav-add:hover { border-color: rgba(255,255,255,0.35); color: rgba(255,255,255,0.6); }
 
+.nav-group { margin-bottom: 4px; }
+.nav-group-label {
+  font-size: 11px;
+  color: rgba(255,255,255,0.35);
+  padding: 6px 10px 2px;
+  font-weight: 500;
+}
+.nav-item.indented { padding-left: 18px; }
+
 /* ── Main ─────────────────────────────────────────────── */
 .main {
   margin-left: var(--sidebar-w);

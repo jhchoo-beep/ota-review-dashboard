@@ -20,7 +20,7 @@
 
 html, body { height: 100%; font-size: 15px; }
 body {
-  font-family: 'Pretendard', -apple-system, sans-serif;
+  font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
   background: var(--bg);
   color: var(--text-1);
   -webkit-font-smoothing: antialiased;

@@ -428,7 +428,7 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>맹그로브 OTA 리뷰 대시보드</title>
+        <title>맹그로브 리뷰 대시보드</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -439,7 +439,7 @@ export default function Home() {
         <aside className="sidebar">
           <div className="sidebar-logo">
             <span className="logo-mark">OTA</span>
-            <span className="logo-text">맹그로브 OTA 리뷰 대시보드</span>
+            <span className="logo-text">맹그로브 리뷰 대시보드</span>
           </div>
 
           <nav className="property-nav">

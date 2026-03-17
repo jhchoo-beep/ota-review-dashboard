@@ -444,17 +444,32 @@ export default function Home() {
 
           <nav className="property-nav">
             <div className="nav-label">지점 목록</div>
-            {properties.map(p => (
-              <button
-                key={p.id}
-                className={`nav-item ${selected?.id === p.id ? 'active' : ''}`}
-                onClick={() => setSelected(p)}
-              >
-                <span className="nav-dot" style={{ background: PLATFORM_COLOR[p.platform] }} />
-                <span className="nav-name">{p.name}</span>
-                <span className="nav-platform">{PLATFORM_LABEL[p.platform]}</span>
-              </button>
-            ))}
+            {(() => {
+              // 지점명 기준으로 그룹핑
+              const groups = properties.reduce((acc, p) => {
+                if (!acc[p.name]) acc[p.name] = [];
+                acc[p.name].push(p);
+                return acc;
+              }, {});
+              return Object.entries(groups).map(([name, items]) => (
+                <div key={name} className="nav-group">
+                  {items.length > 1 && (
+                    <div className="nav-group-label">{name}</div>
+                  )}
+                  {items.map(p => (
+                    <button
+                      key={p.id}
+                      className={`nav-item ${selected?.id === p.id ? 'active' : ''} ${items.length > 1 ? 'indented' : ''}`}
+                      onClick={() => setSelected(p)}
+                    >
+                      <span className="nav-dot" style={{ background: PLATFORM_COLOR[p.platform] }} />
+                      <span className="nav-name">{items.length > 1 ? PLATFORM_LABEL[p.platform] : p.name}</span>
+                      {items.length === 1 && <span className="nav-platform">{PLATFORM_LABEL[p.platform]}</span>}
+                    </button>
+                  ))}
+                </div>
+              ));
+            })()}
             <button className="nav-add" onClick={() => setShowAddModal(true)}>
               + 지점 추가
             </button>
@@ -481,7 +496,7 @@ export default function Home() {
             <form onSubmit={addProperty}>
               <div className="form-field" style={{ marginBottom: '12px' }}>
                 <label>지점명</label>
-                <input type="text" placeholder="예: 홍대 만그로브" value={newName} onChange={e => setNewName(e.target.value)} required />
+                <input type="text" placeholder="예: 맹그로브 고성" value={newName} onChange={e => setNewName(e.target.value)} required />
               </div>
               <div className="form-field" style={{ marginBottom: '20px' }}>
                 <label>플랫폼</label>

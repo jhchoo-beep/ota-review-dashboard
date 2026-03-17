@@ -203,6 +203,20 @@ body {
   min-height: 100vh;
 }
 
+/* 웰컴 상태일 때 — 사이드바 margin 무효화하고 전체 너비 사용 */
+.main-welcome {
+  margin-left: 0 !important;
+  padding: 0 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  width: 100vw;
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
 /* ── Property Panel ─────────────────────────────────────── */
 .property-panel {
   background: var(--surface);
@@ -778,9 +792,15 @@ body {
 
 @media (max-width: 768px) {
   .main-welcome {
-    padding-top: 72px;
+    position: fixed;
+    top: 52px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
     align-items: flex-start;
-    padding: 72px 20px 20px;
+    overflow-y: auto;
+    padding: 24px 20px !important;
   }
   .welcome-page {
     max-width: 100%;

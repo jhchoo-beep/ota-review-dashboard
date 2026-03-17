@@ -72,13 +72,15 @@ body {
   flex-direction: column;
   gap: 2px;
 }
-.nav-label-row {
+.nav-group { margin-bottom: 8px; }
+
+.nav-group-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 8px;
-  margin-bottom: 6px;
+  padding-right: 6px;
 }
+
 .nav-reorder-btn {
   font-size: 10px;
   color: rgba(255,255,255,0.35);
@@ -89,28 +91,31 @@ body {
   cursor: pointer;
   font-family: inherit;
   transition: all 0.15s;
+  white-space: nowrap;
 }
 .nav-reorder-btn:hover { color: rgba(255,255,255,0.7); border-color: rgba(255,255,255,0.35); }
 .nav-reorder-btn.active { color: #22c55e; border-color: #22c55e44; background: #22c55e11; }
 
-.nav-group.draggable {
-  cursor: grab;
-  border-radius: 6px;
-  transition: background 0.1s;
+.nav-item-wrap {
   display: flex;
-  flex-direction: column;
-  padding-left: 4px;
+  align-items: center;
+  border-radius: 6px;
 }
-.nav-group.draggable:hover { background: rgba(255,255,255,0.05); }
-.nav-group.draggable:active { cursor: grabbing; }
+.nav-item-wrap.draggable {
+  cursor: grab;
+  background: rgba(255,255,255,0.03);
+  margin-bottom: 2px;
+}
+.nav-item-wrap.draggable:hover { background: rgba(255,255,255,0.07); }
+.nav-item-wrap.draggable:active { cursor: grabbing; }
 
 .drag-handle {
   font-size: 14px;
-  color: rgba(255,255,255,0.25);
-  padding: 2px 6px 0;
+  color: rgba(255,255,255,0.3);
+  padding: 0 4px 0 8px;
   letter-spacing: -1px;
   user-select: none;
-  align-self: flex-start;
+  flex-shrink: 0;
 }
 
 .nav-label {

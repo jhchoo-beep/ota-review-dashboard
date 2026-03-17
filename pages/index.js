@@ -1,5 +1,5 @@
 // pages/index.js
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import {
   Chart as ChartJS, CategoryScale, LinearScale,
@@ -662,54 +662,41 @@ export default function Home() {
   const [isCustomName, setIsCustomName] = useState(false);
   const [newPlatform, setNewPlatform] = useState('agoda');
   const [addStatus, setAddStatus] = useState('idle');
-  const [reorderingGroup, setReorderingGroup] = useState(null);
-  const dragItem = useRef(null);
-  const dragOver = useRef(null);
 
-  // 고정 지점 목록 + 현재 DB에 있는 지점도 포함
+  // 고정 지점 목록
   const FIXED_PROPERTIES = ['맹그로브 신설', '맹그로브 동대문', '맹그로브 고성', '맹그로브 제주시티'];
 
-  // 그룹 단위 목록
+  // 지점별 OTA 고정 순서
+  const OTA_ORDER = {
+    '맹그로브 신설':    ['agoda','airbnb','booking','tripcom','expedia','nol','yeogieottae','metasearch'],
+    '맹그로브 동대문':  ['agoda','airbnb','booking','tripcom','expedia','nol','yeogieottae','metasearch'],
+    '맹그로브 고성':    ['agoda','airbnb','nol','metasearch'],
+    '맹그로브 제주시티':['agoda','airbnb','booking','tripcom','expedia','nol','yeogieottae','metasearch'],
+  };
+
+  // 그룹 단위 목록 — 지점 고정 순서 + OTA 고정 순서 적용
   const groupList = (() => {
-    const seen = [];
     const map = {};
     properties.forEach(p => {
-      if (!map[p.name]) { map[p.name] = []; seen.push(p.name); }
+      if (!map[p.name]) map[p.name] = [];
       map[p.name].push(p);
     });
-    return seen.map(name => ({ name, items: map[name] }));
-  })();
-
-  const handleDragStart = (idx) => { dragItem.current = idx; };
-  const handleDragEnter = (idx) => { dragOver.current = idx; };
-
-  // 그룹 내 OTA 순서 변경
-  const handleDragEnd = async (groupName) => {
-    if (dragItem.current === null || dragOver.current === null || dragItem.current === dragOver.current) {
-      dragItem.current = null; dragOver.current = null; return;
-    }
-    const grp = groupList.find(g => g.name === groupName);
-    if (!grp) return;
-    const newItems = [...grp.items];
-    const dragged = newItems.splice(dragItem.current, 1)[0];
-    newItems.splice(dragOver.current, 0, dragged);
-    dragItem.current = null; dragOver.current = null;
-
-    // 기존 sort_order에서 지점 번호(앞자리) 보존 — OTA 순서(뒷자리)만 변경
-    // 예: 기존 sort_order가 200, 201, 202면 200단위는 유지하고 0,1,2만 바꿈
-    const baseOrder = Math.floor(Math.min(...grp.items.map(p => p.sort_order ?? 99)) / 100) * 100;
-    const orders = newItems.map((p, pi) => ({
-      id: p.id,
-      sort_order: baseOrder + pi,
-    }));
-    await fetch('/api/properties', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ orders }),
+    // 지점 순서: 고정 목록 먼저, 나머지는 뒤에
+    const fixedNames = FIXED_PROPERTIES.filter(n => map[n]);
+    const extraNames = Object.keys(map).filter(n => !FIXED_PROPERTIES.includes(n));
+    return [...fixedNames, ...extraNames].map(name => {
+      const items = map[name];
+      const order = OTA_ORDER[name];
+      if (order) {
+        items.sort((a, b) => {
+          const ai = order.indexOf(a.platform);
+          const bi = order.indexOf(b.platform);
+          return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+        });
+      }
+      return { name, items };
     });
-    const updated = await fetch('/api/properties').then(r => r.json());
-    setProperties(updated);
-  };
+  })();
 
   useEffect(() => {
     fetch('/api/properties')
@@ -764,48 +751,26 @@ export default function Home() {
               <span className="nav-label">지점 목록</span>
             </div>
             <div className="nav-scroll">
-            {groupList.map((grp, gi) => {
-              const isThisReordering = reorderingGroup === grp.name;
-              return (
-                <div key={grp.name} className="nav-group">
-                  {/* 지점명 + 순서변경 버튼 (OTA가 2개 이상일 때만) */}
-                  {grp.items.length > 1 && (
-                    <div className="nav-group-header">
-                      <div className="nav-group-label">{grp.name}</div>
-                      <button
-                        className={`nav-reorder-btn ${isThisReordering ? 'active' : ''}`}
-                        onClick={() => setReorderingGroup(isThisReordering ? null : grp.name)}
-                      >
-                        {isThisReordering ? '완료' : '순서'}
-                      </button>
-                    </div>
-                  )}
-                  {/* OTA 항목들 */}
-                  {grp.items.map((p, pi) => (
-                    <div
-                      key={p.id}
-                      className={`nav-item-wrap ${isThisReordering ? 'draggable' : ''}`}
-                      draggable={isThisReordering}
-                      onDragStart={() => handleDragStart(pi)}
-                      onDragEnter={() => handleDragEnter(pi)}
-                      onDragEnd={() => handleDragEnd(grp.name)}
-                      onDragOver={e => e.preventDefault()}
-                    >
-                      {isThisReordering && <span className="drag-handle">⠿</span>}
-                      <button
-                        className={`nav-item ${selected?.id === p.id ? 'active' : ''} ${grp.items.length > 1 ? 'indented' : ''}`}
-                        onClick={() => !isThisReordering && setSelected(p)}
-                        style={{ flex: 1 }}
-                      >
-                        <span className="nav-dot" style={{ background: PLATFORM_COLOR[p.platform] }} />
-                        <span className="nav-name">{grp.items.length > 1 ? PLATFORM_LABEL[p.platform] : p.name}</span>
-                        {grp.items.length === 1 && <span className="nav-platform">{PLATFORM_LABEL[p.platform]}</span>}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
+            {groupList.map((grp) => (
+              <div key={grp.name} className="nav-group">
+                {grp.items.length > 1 && (
+                  <div className="nav-group-header">
+                    <div className="nav-group-label">{grp.name}</div>
+                  </div>
+                )}
+                {grp.items.map(p => (
+                  <button
+                    key={p.id}
+                    className={`nav-item ${selected?.id === p.id ? 'active' : ''} ${grp.items.length > 1 ? 'indented' : ''}`}
+                    onClick={() => setSelected(p)}
+                  >
+                    <span className="nav-dot" style={{ background: PLATFORM_COLOR[p.platform] }} />
+                    <span className="nav-name">{grp.items.length > 1 ? PLATFORM_LABEL[p.platform] : p.name}</span>
+                    {grp.items.length === 1 && <span className="nav-platform">{PLATFORM_LABEL[p.platform]}</span>}
+                  </button>
+                ))}
+              </div>
+            ))}
             </div>
           </nav>
         </aside>

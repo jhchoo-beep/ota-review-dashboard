@@ -662,6 +662,7 @@ export default function Home() {
   const [isCustomName, setIsCustomName] = useState(false);
   const [newPlatform, setNewPlatform] = useState('agoda');
   const [addStatus, setAddStatus] = useState('idle');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // 고정 지점 목록
   const FIXED_PROPERTIES = ['맹그로브 신설', '맹그로브 동대문', '맹그로브 고성', '맹그로브 제주시티'];
@@ -736,8 +737,24 @@ export default function Home() {
       </Head>
 
       <div className="app">
+        {/* 모바일 전용 상단 헤더 */}
+        <header className="mobile-header">
+          <button className="hamburger" onClick={() => setSidebarOpen(v => !v)}>
+            <span /><span /><span />
+          </button>
+          <div className="mobile-logo">
+            <span className="logo-mark">OTA</span>
+            <span className="logo-text">맹그로브 리뷰 대시보드</span>
+          </div>
+        </header>
+
+        {/* 모바일 사이드바 오버레이 */}
+        {sidebarOpen && (
+          <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />
+        )}
+
         {/* Sidebar */}
-        <aside className="sidebar">
+        <aside className={`sidebar ${sidebarOpen ? 'sidebar-open' : ''}`}>
           <div className="sidebar-logo">
             <span className="logo-mark">OTA</span>
             <span className="logo-text">맹그로브 리뷰 대시보드</span>
@@ -762,7 +779,7 @@ export default function Home() {
                   <button
                     key={p.id}
                     className={`nav-item ${selected?.id === p.id ? 'active' : ''} ${grp.items.length > 1 ? 'indented' : ''}`}
-                    onClick={() => setSelected(p)}
+                    onClick={() => { setSelected(p); setSidebarOpen(false); }}}
                   >
                     <span className="nav-dot" style={{ background: PLATFORM_COLOR[p.platform] }} />
                     <span className="nav-name">{grp.items.length > 1 ? PLATFORM_LABEL[p.platform] : p.name}</span>

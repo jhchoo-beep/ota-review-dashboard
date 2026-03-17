@@ -27,11 +27,14 @@ export default async function handler(req, res) {
       property_id, recorded_at, review_count,
       overall_score, cleanliness, facilities,
       location, service, value_for_money, response_rate,
-      staff_friendliness, comfort, free_wifi
+      staff_friendliness, comfort, free_wifi,
+      staff_service, amenities, property_condition,
+      google_score, naver_score, kakao_score, tripadvisor_score,
+      google_count, naver_count, kakao_count, tripadvisor_count,
     } = req.body;
 
-    if (!property_id || !recorded_at || !overall_score) {
-      return res.status(400).json({ error: '지점, 날짜, 종합 평점은 필수입니다' });
+    if (!property_id || !recorded_at) {
+      return res.status(400).json({ error: '지점과 날짜는 필수입니다' });
     }
 
     try {
@@ -39,13 +42,19 @@ export default async function handler(req, res) {
         INSERT INTO reviews
           (property_id, recorded_at, review_count, overall_score,
            cleanliness, facilities, location, service, value_for_money, response_rate,
-           staff_friendliness, comfort, free_wifi)
+           staff_friendliness, comfort, free_wifi,
+           staff_service, amenities, property_condition,
+           google_score, naver_score, kakao_score, tripadvisor_score,
+           google_count, naver_count, kakao_count, tripadvisor_count)
         VALUES
           (${property_id}, ${recorded_at}, ${review_count || null},
-           ${overall_score}, ${cleanliness || null}, ${facilities || null},
+           ${overall_score || null}, ${cleanliness || null}, ${facilities || null},
            ${location || null}, ${service || null}, ${value_for_money || null},
            ${response_rate || null}, ${staff_friendliness || null},
-           ${comfort || null}, ${free_wifi || null})
+           ${comfort || null}, ${free_wifi || null},
+           ${staff_service || null}, ${amenities || null}, ${property_condition || null},
+           ${google_score || null}, ${naver_score || null}, ${kakao_score || null}, ${tripadvisor_score || null},
+           ${google_count || null}, ${naver_count || null}, ${kakao_count || null}, ${tripadvisor_count || null})
         ON CONFLICT (property_id, recorded_at)
         DO UPDATE SET
           review_count = EXCLUDED.review_count,
@@ -58,7 +67,18 @@ export default async function handler(req, res) {
           response_rate = EXCLUDED.response_rate,
           staff_friendliness = EXCLUDED.staff_friendliness,
           comfort = EXCLUDED.comfort,
-          free_wifi = EXCLUDED.free_wifi
+          free_wifi = EXCLUDED.free_wifi,
+          staff_service = EXCLUDED.staff_service,
+          amenities = EXCLUDED.amenities,
+          property_condition = EXCLUDED.property_condition,
+          google_score = EXCLUDED.google_score,
+          naver_score = EXCLUDED.naver_score,
+          kakao_score = EXCLUDED.kakao_score,
+          tripadvisor_score = EXCLUDED.tripadvisor_score,
+          google_count = EXCLUDED.google_count,
+          naver_count = EXCLUDED.naver_count,
+          kakao_count = EXCLUDED.kakao_count,
+          tripadvisor_count = EXCLUDED.tripadvisor_count
         RETURNING *
       `;
       return res.status(201).json(rows[0]);

@@ -72,6 +72,47 @@ body {
   flex-direction: column;
   gap: 2px;
 }
+.nav-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+  margin-bottom: 6px;
+}
+.nav-reorder-btn {
+  font-size: 10px;
+  color: rgba(255,255,255,0.35);
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 4px;
+  padding: 2px 7px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+.nav-reorder-btn:hover { color: rgba(255,255,255,0.7); border-color: rgba(255,255,255,0.35); }
+.nav-reorder-btn.active { color: #22c55e; border-color: #22c55e44; background: #22c55e11; }
+
+.nav-group.draggable {
+  cursor: grab;
+  border-radius: 6px;
+  transition: background 0.1s;
+  display: flex;
+  flex-direction: column;
+  padding-left: 4px;
+}
+.nav-group.draggable:hover { background: rgba(255,255,255,0.05); }
+.nav-group.draggable:active { cursor: grabbing; }
+
+.drag-handle {
+  font-size: 14px;
+  color: rgba(255,255,255,0.25);
+  padding: 2px 6px 0;
+  letter-spacing: -1px;
+  user-select: none;
+  align-self: flex-start;
+}
+
 .nav-label {
   font-size: 10px;
   font-weight: 600;

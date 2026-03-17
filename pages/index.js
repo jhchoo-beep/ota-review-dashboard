@@ -523,6 +523,7 @@ function PropertyPanel({ property }) {
   const isExpedia = property.platform === 'expedia';
   const isMetaSearch = property.platform === 'metasearch';
   const isSimple = ['yeogieottae', 'nol'].includes(property.platform);
+  const latest = reviews[0];
   const prev = reviews[1];
   const accent = PLATFORM_COLOR[property.platform];
 

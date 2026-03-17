@@ -773,7 +773,18 @@ body {
 }
 
 @media (max-width: 768px) {
-  .welcome-page { padding-top: 80px; }
+  .welcome-page {
+    padding-top: 80px;
+    min-height: 100vh;
+    align-items: flex-start;
+    justify-content: center;
+  }
+  .welcome-inner {
+    max-width: 100%;
+    width: 100%;
+  }
+  .welcome-title { font-size: 20px; }
+  .welcome-hint { font-size: 13px; text-align: left; }
   .welcome-hint .welcome-arrow { display: none; }
-  .welcome-hint::before { content: "↑ 상단 메뉴 버튼을 눌러 "; }
+  .welcome-hint::before { content: "☰ 상단 메뉴 버튼을 눌러 "; font-weight: 600; color: var(--text-1); }
 }

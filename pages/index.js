@@ -331,12 +331,21 @@ function PropertyPanel({ property }) {
             {PLATFORM_LABEL[property.platform]}
           </span>
         </div>
-        <div className="panel-tabs">
-          {['dashboard', 'input', 'history'].map(t => (
-            <button key={t} className={`tab-btn ${tab === t ? 'active' : ''}`} style={tab === t ? { borderBottomColor: accent, color: accent } : {}} onClick={() => setTab(t)}>
-              {{ dashboard: '대시보드', input: '점수 입력', history: '기록' }[t]}
-            </button>
-          ))}
+        <div className="panel-header-right">
+          <div className="panel-tabs">
+            {['dashboard', 'history'].map(t => (
+              <button key={t} className={`tab-btn ${tab === t ? 'active' : ''}`} style={tab === t ? { borderBottomColor: accent, color: accent } : {}} onClick={() => setTab(t)}>
+                {{ dashboard: '대시보드', history: '기록' }[t]}
+              </button>
+            ))}
+          </div>
+          <button
+            className="btn-input"
+            style={{ background: tab === 'input' ? accent : 'transparent', color: tab === 'input' ? '#fff' : accent, borderColor: accent }}
+            onClick={() => setTab(tab === 'input' ? 'dashboard' : 'input')}
+          >
+            {tab === 'input' ? '✕ 닫기' : '+ 점수 입력'}
+          </button>
         </div>
       </div>
 

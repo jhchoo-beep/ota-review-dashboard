@@ -779,7 +779,7 @@ export default function Home() {
                   <button
                     key={p.id}
                     className={`nav-item ${selected?.id === p.id ? 'active' : ''} ${grp.items.length > 1 ? 'indented' : ''}`}
-                    onClick={() => { setSelected(p); setSidebarOpen(false); }}}
+                    onClick={() => { setSelected(p); setSidebarOpen(false); }}
                   >
                     <span className="nav-dot" style={{ background: PLATFORM_COLOR[p.platform] }} />
                     <span className="nav-name">{grp.items.length > 1 ? PLATFORM_LABEL[p.platform] : p.name}</span>

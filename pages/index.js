@@ -152,9 +152,11 @@ function ReviewChart({ reviews, platform }) {
 
   if (!isAirbnb) {
     const extras = [
-      { key: 'cleanliness', label: '청결', color: '#6366f1' },
-      { key: 'service',     label: '서비스', color: '#22c55e' },
-      { key: 'location',    label: '위치', color: '#f59e0b' },
+      { key: 'cleanliness',     label: '청결',          color: '#6366f1' },
+      { key: 'facilities',      label: '부대시설',       color: '#22c55e' },
+      { key: 'location',        label: '위치',           color: '#f59e0b' },
+      { key: 'service',         label: '서비스',         color: '#ef4444' },
+      { key: 'value_for_money', label: '가격 만족도',    color: '#14b8a6' },
     ];
     extras.forEach(({ key, label, color }) => {
       datasets.push({
@@ -357,8 +359,9 @@ function PropertyPanel({ property }) {
                 <StatCard label="종합 평점" value={<>{fmtScore(latest.overall_score)}{diffEl('overall_score')}</>} sub={`기준일: ${latest.recorded_at?.slice(0, 10)}`} />
                 <StatCard label="누적 리뷰 수" value={fmtCount(latest.review_count)} />
                 {!isAirbnb && <StatCard label="청결" value={<>{fmtScore(latest.cleanliness)}{diffEl('cleanliness')}</>} />}
-                {!isAirbnb && <StatCard label="서비스" value={<>{fmtScore(latest.service)}{diffEl('service')}</>} />}
+                {!isAirbnb && <StatCard label="부대시설" value={<>{fmtScore(latest.facilities)}{diffEl('facilities')}</>} />}
                 {!isAirbnb && <StatCard label="위치" value={<>{fmtScore(latest.location)}{diffEl('location')}</>} />}
+                {!isAirbnb && <StatCard label="서비스" value={<>{fmtScore(latest.service)}{diffEl('service')}</>} />}
                 {isAirbnb && <StatCard label="응답률" value={latest.response_rate != null ? `${latest.response_rate}%` : '—'} />}
                 {!isAirbnb && <StatCard label="가격 만족도" value={<>{fmtScore(latest.value_for_money)}{diffEl('value_for_money')}</>} />}
               </div>

@@ -660,6 +660,47 @@ export default function Home() {
   const [newName, setNewName] = useState('');
   const [newPlatform, setNewPlatform] = useState('agoda');
   const [addStatus, setAddStatus] = useState('idle');
+  const [isReordering, setIsReordering] = useState(false);
+  const dragItem = useRef(null);
+  const dragOver = useRef(null);
+
+  // 그룹 단위 순서 목록 (드래그용)
+  const groupList = (() => {
+    const seen = [];
+    const map = {};
+    properties.forEach(p => {
+      if (!map[p.name]) { map[p.name] = []; seen.push(p.name); }
+      map[p.name].push(p);
+    });
+    return seen.map(name => ({ name, items: map[name] }));
+  })();
+
+  const handleDragStart = (idx) => { dragItem.current = idx; };
+  const handleDragEnter = (idx) => { dragOver.current = idx; };
+  const handleDragEnd = async () => {
+    if (dragItem.current === null || dragOver.current === null || dragItem.current === dragOver.current) {
+      dragItem.current = null; dragOver.current = null; return;
+    }
+    const newGroups = [...groupList];
+    const dragged = newGroups.splice(dragItem.current, 1)[0];
+    newGroups.splice(dragOver.current, 0, dragged);
+    dragItem.current = null; dragOver.current = null;
+
+    // 순서 재계산: 그룹 내 플랫폼은 기존 순서 유지
+    const orders = [];
+    newGroups.forEach((grp, gi) => {
+      grp.items.forEach((p, pi) => {
+        orders.push({ id: p.id, sort_order: gi * 100 + pi });
+      });
+    });
+    await fetch('/api/properties', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orders }),
+    });
+    const updated = await fetch('/api/properties').then(r => r.json());
+    setProperties(updated);
+  };
 
   useEffect(() => {
     fetch('/api/properties')
@@ -703,36 +744,50 @@ export default function Home() {
           </div>
 
           <nav className="property-nav">
-            <div className="nav-label">지점 목록</div>
-            {(() => {
-              // 지점명 기준으로 그룹핑
-              const groups = properties.reduce((acc, p) => {
-                if (!acc[p.name]) acc[p.name] = [];
-                acc[p.name].push(p);
-                return acc;
-              }, {});
-              return Object.entries(groups).map(([name, items]) => (
-                <div key={name} className="nav-group">
-                  {items.length > 1 && (
-                    <div className="nav-group-label">{name}</div>
-                  )}
-                  {items.map(p => (
-                    <button
-                      key={p.id}
-                      className={`nav-item ${selected?.id === p.id ? 'active' : ''} ${items.length > 1 ? 'indented' : ''}`}
-                      onClick={() => setSelected(p)}
-                    >
-                      <span className="nav-dot" style={{ background: PLATFORM_COLOR[p.platform] }} />
-                      <span className="nav-name">{items.length > 1 ? PLATFORM_LABEL[p.platform] : p.name}</span>
-                      {items.length === 1 && <span className="nav-platform">{PLATFORM_LABEL[p.platform]}</span>}
-                    </button>
-                  ))}
-                </div>
-              ));
-            })()}
-            <button className="nav-add" onClick={() => setShowAddModal(true)}>
-              + 지점 추가
-            </button>
+            <div className="nav-label-row">
+              <span className="nav-label">지점 목록</span>
+              <button
+                className={`nav-reorder-btn ${isReordering ? 'active' : ''}`}
+                onClick={() => setIsReordering(v => !v)}
+                title="순서 변경"
+              >
+                {isReordering ? '완료' : '순서변경'}
+              </button>
+            </div>
+            {groupList.map((grp, gi) => (
+              <div
+                key={grp.name}
+                className={`nav-group ${isReordering ? 'draggable' : ''}`}
+                draggable={isReordering}
+                onDragStart={() => handleDragStart(gi)}
+                onDragEnter={() => handleDragEnter(gi)}
+                onDragEnd={handleDragEnd}
+                onDragOver={e => e.preventDefault()}
+              >
+                {isReordering && (
+                  <span className="drag-handle">⠿</span>
+                )}
+                {grp.items.length > 1 && (
+                  <div className="nav-group-label">{grp.name}</div>
+                )}
+                {grp.items.map(p => (
+                  <button
+                    key={p.id}
+                    className={`nav-item ${selected?.id === p.id ? 'active' : ''} ${grp.items.length > 1 ? 'indented' : ''}`}
+                    onClick={() => !isReordering && setSelected(p)}
+                  >
+                    <span className="nav-dot" style={{ background: PLATFORM_COLOR[p.platform] }} />
+                    <span className="nav-name">{grp.items.length > 1 ? PLATFORM_LABEL[p.platform] : p.name}</span>
+                    {grp.items.length === 1 && <span className="nav-platform">{PLATFORM_LABEL[p.platform]}</span>}
+                  </button>
+                ))}
+              </div>
+            ))}
+            {!isReordering && (
+              <button className="nav-add" onClick={() => setShowAddModal(true)}>
+                + 지점 추가
+              </button>
+            )}
           </nav>
         </aside>
 

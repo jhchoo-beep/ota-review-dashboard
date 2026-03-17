@@ -199,6 +199,50 @@ function ReviewChart({ reviews, platform }) {
   );
 }
 
+// ── Review Count Chart ───────────────────────────────
+function ReviewCountChart({ reviews }) {
+  const sorted = [...reviews].sort((a, b) => a.recorded_at.localeCompare(b.recorded_at));
+  const labels = sorted.map(r => r.recorded_at?.slice(0, 10) ?? '');
+  const data = sorted.map(r => r.review_count != null ? Number(r.review_count) : null);
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: { mode: 'index', intersect: false },
+    },
+    scales: {
+      x: { grid: { color: '#f0f0f0' }, ticks: { font: { size: 11 }, maxRotation: 45 } },
+      y: {
+        ticks: { font: { size: 11 }, callback: v => v.toLocaleString() },
+        grid: { color: '#f0f0f0' },
+      },
+    },
+  };
+
+  const chartData = {
+    labels,
+    datasets: [{
+      label: '누적 리뷰 수',
+      data,
+      borderColor: '#185FA5',
+      backgroundColor: '#185FA518',
+      fill: true,
+      tension: 0.35,
+      pointRadius: 4,
+      pointHoverRadius: 6,
+      borderWidth: 2,
+    }],
+  };
+
+  return (
+    <div style={{ position: 'relative', height: '220px', width: '100%' }}>
+      <Line data={chartData} options={options} />
+    </div>
+  );
+}
+
 // ── History Table ────────────────────────────────────
 function HistoryTable({ reviews, platform, onDelete }) {
   const isAirbnb = platform === 'airbnb';
@@ -315,10 +359,16 @@ function PropertyPanel({ property }) {
                 {!isAirbnb && <StatCard label="가격 만족도" value={<>{fmtScore(latest.value_for_money)}{diffEl('value_for_money')}</>} />}
               </div>
               {reviews.length >= 2 && (
-                <div className="chart-section">
-                  <h3 className="section-title">평점 추이</h3>
-                  <ReviewChart reviews={reviews} platform={property.platform} />
-                </div>
+                <>
+                  <div className="chart-section">
+                    <h3 className="section-title">평점 추이</h3>
+                    <ReviewChart reviews={reviews} platform={property.platform} />
+                  </div>
+                  <div className="chart-section" style={{ marginTop: '24px' }}>
+                    <h3 className="section-title">누적 리뷰 수 추이</h3>
+                    <ReviewCountChart reviews={reviews} />
+                  </div>
+                </>
               )}
             </>
           ) : (

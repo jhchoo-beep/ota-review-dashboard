@@ -687,16 +687,19 @@ body {
 }
 
 /* ── Welcome Page ───────────────────────────────────── */
-.welcome-page {
-  min-height: 100vh;
+.main-welcome {
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 2rem;
 }
+.welcome-page {
+  width: 100%;
+  max-width: 480px;
+  text-align: center;
+}
 .welcome-inner {
   text-align: center;
-  max-width: 480px;
 }
 .welcome-logo-wrap {
   display: inline-flex;
@@ -746,6 +749,7 @@ body {
   border-radius: var(--radius);
   padding: 1rem 1.25rem;
   margin-bottom: 1.5rem;
+  text-align: left;
 }
 .welcome-arrow {
   display: inline-block;
@@ -773,18 +777,21 @@ body {
 }
 
 @media (max-width: 768px) {
-  .welcome-page {
-    padding-top: 80px;
-    min-height: 100vh;
+  .main-welcome {
+    padding-top: 72px;
     align-items: flex-start;
-    justify-content: center;
+    padding: 72px 20px 20px;
   }
-  .welcome-inner {
+  .welcome-page {
     max-width: 100%;
-    width: 100%;
   }
   .welcome-title { font-size: 20px; }
-  .welcome-hint { font-size: 13px; text-align: left; }
+  .welcome-hint { font-size: 13px; }
   .welcome-hint .welcome-arrow { display: none; }
-  .welcome-hint::before { content: "☰ 상단 메뉴 버튼을 눌러 "; font-weight: 600; color: var(--text-1); }
+  .welcome-hint::before {
+    content: "☰ 상단 메뉴 버튼을 눌러 ";
+    font-weight: 600;
+    color: var(--text-1);
+  }
+}
 }

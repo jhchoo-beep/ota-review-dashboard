@@ -858,7 +858,7 @@ export default function Home() {
                   <label>새 지점명 입력</label>
                   <input
                     type="text"
-                    placeholder="예: 맹그로브 두바이"
+                    placeholder="예: 맹그로브 아부다비"
                     value={newNameCustom}
                     onChange={e => setNewNameCustom(e.target.value)}
                     required

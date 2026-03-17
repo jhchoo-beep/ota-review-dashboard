@@ -685,3 +685,95 @@ body {
     padding: 7px 12px;
   }
 }
+
+/* ── Welcome Page ───────────────────────────────────── */
+.welcome-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+.welcome-inner {
+  text-align: center;
+  max-width: 480px;
+}
+.welcome-logo-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  background: var(--bg);
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  margin-bottom: 1.5rem;
+}
+.welcome-logo-mark {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  background: linear-gradient(135deg, #E84393, #FF5A5F);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.welcome-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text-1);
+  margin-bottom: 10px;
+  letter-spacing: -0.02em;
+}
+.welcome-desc {
+  font-size: 15px;
+  color: var(--text-2);
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+}
+.welcome-divider {
+  width: 40px;
+  height: 2px;
+  background: var(--border-dark);
+  margin: 0 auto 1.5rem;
+  border-radius: 2px;
+}
+.welcome-hint {
+  font-size: 14px;
+  color: var(--text-2);
+  line-height: 1.8;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+}
+.welcome-arrow {
+  display: inline-block;
+  margin-right: 4px;
+  font-size: 16px;
+  color: var(--text-3);
+}
+.welcome-hint strong {
+  color: var(--text-1);
+  font-weight: 600;
+}
+.welcome-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+.welcome-ota-badge {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 12px;
+  border-radius: 99px;
+  border: 1px solid currentColor;
+  opacity: 0.85;
+}
+
+@media (max-width: 768px) {
+  .welcome-page { padding-top: 80px; }
+  .welcome-hint .welcome-arrow { display: none; }
+  .welcome-hint::before { content: "↑ 상단 메뉴 버튼을 눌러 "; }
+}

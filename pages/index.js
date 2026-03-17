@@ -9,8 +9,16 @@ import { Line } from 'react-chartjs-2';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend, Filler);
 
-const PLATFORM_LABEL = { agoda: 'Agoda', airbnb: 'Airbnb', booking: 'Booking.com' };
-const PLATFORM_COLOR = { agoda: '#E84393', airbnb: '#FF5A5F', booking: '#003580' };
+const PLATFORM_LABEL = {
+  agoda: 'Agoda', airbnb: 'Airbnb', booking: 'Booking.com',
+  tripcom: 'Trip.com', expedia: 'Expedia',
+  yeogieottae: '여기어때', nol: 'NOL', metasearch: 'Meta-Search'
+};
+const PLATFORM_COLOR = {
+  agoda: '#E84393', airbnb: '#FF5A5F', booking: '#003580',
+  tripcom: '#1F72B8', expedia: '#FFCC00',
+  yeogieottae: '#FF5C1A', nol: '#00B388', metasearch: '#6366f1'
+};
 
 const AGODA_FIELDS = [
   { key: 'cleanliness',     label: '청결' },
@@ -22,7 +30,6 @@ const AGODA_FIELDS = [
 const AIRBNB_FIELDS = [
   { key: 'response_rate', label: '응답률 (%)' },
 ];
-
 const BOOKING_FIELDS = [
   { key: 'staff_friendliness', label: '직원 친절도' },
   { key: 'facilities',         label: '시설' },
@@ -32,6 +39,41 @@ const BOOKING_FIELDS = [
   { key: 'location',           label: '위치' },
   { key: 'free_wifi',          label: '무료 Wi-Fi' },
 ];
+const TRIPCOM_FIELDS = [
+  { key: 'cleanliness', label: '청결도' },
+  { key: 'facilities',  label: '시설' },
+  { key: 'location',    label: '위치' },
+  { key: 'service',     label: '서비스' },
+];
+const EXPEDIA_FIELDS = [
+  { key: 'cleanliness',        label: '청결도' },
+  { key: 'staff_service',      label: '직원 및 서비스' },
+  { key: 'amenities',          label: '편의시설' },
+  { key: 'property_condition', label: '숙박 시설 상태' },
+];
+// 여기어때, NOL 세부항목 없음
+const YEOGI_FIELDS = [];
+const NOL_FIELDS = [];
+// Meta-Search: 4개 플랫폼 한 번에 입력
+const METASEARCH_PLATFORMS = [
+  { key: 'google',      label: 'Google',      color: '#EA4335', scoreKey: 'google_score',      countKey: 'google_count' },
+  { key: 'naver',       label: 'Naver',       color: '#03C75A', scoreKey: 'naver_score',       countKey: 'naver_count' },
+  { key: 'kakao',       label: 'Kakao',       color: '#FAE100', scoreKey: 'kakao_score',       countKey: 'kakao_count' },
+  { key: 'tripadvisor', label: 'Tripadvisor', color: '#34E0A1', scoreKey: 'tripadvisor_score', countKey: 'tripadvisor_count' },
+];
+
+function getFields(platform) {
+  switch(platform) {
+    case 'agoda':        return AGODA_FIELDS;
+    case 'airbnb':       return AIRBNB_FIELDS;
+    case 'booking':      return BOOKING_FIELDS;
+    case 'tripcom':      return TRIPCOM_FIELDS;
+    case 'expedia':      return EXPEDIA_FIELDS;
+    case 'yeogieottae':  return YEOGI_FIELDS;
+    case 'nol':          return NOL_FIELDS;
+    default:             return [];
+  }
+}
 
 function today() { return new Date().toISOString().slice(0, 10); }
 function fmt(v) { return v != null ? Number(v) : null; }
@@ -63,15 +105,20 @@ function StatCard({ label, value, sub }) {
 
 // ── Review Form ──────────────────────────────────────
 function ReviewForm({ property, onSaved }) {
-  const isAirbnb = property.platform === 'airbnb';
-  const isBooking = property.platform === 'booking';
-  const fields = isAirbnb ? AIRBNB_FIELDS : isBooking ? BOOKING_FIELDS : AGODA_FIELDS;
-  const maxScore = isAirbnb ? 10 : 10;
+  const platform = property.platform;
+  const isMetaSearch = platform === 'metasearch';
+  const fields = getFields(platform);
 
-  const [form, setForm] = useState({ recorded_at: today(), review_count: '', overall_score: '', response_rate: '', cleanliness: '', facilities: '', location: '', service: '', value_for_money: '', staff_friendliness: '', comfort: '', free_wifi: '' });
-  const [status, setStatus] = useState('idle'); // idle | loading | ok | error
+  const [form, setForm] = useState({
+    recorded_at: today(), review_count: '', overall_score: '',
+    response_rate: '', cleanliness: '', facilities: '', location: '',
+    service: '', value_for_money: '', staff_friendliness: '', comfort: '',
+    free_wifi: '', staff_service: '', amenities: '', property_condition: '',
+    google_score: '', naver_score: '', kakao_score: '', tripadvisor_score: '',
+    google_count: '', naver_count: '', kakao_count: '', tripadvisor_count: '',
+  });
+  const [status, setStatus] = useState('idle');
   const [errMsg, setErrMsg] = useState('');
-
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const handleSubmit = async (e) => {
@@ -95,6 +142,43 @@ function ReviewForm({ property, onSaved }) {
     }
   };
 
+  // Meta-Search 전용 폼
+  if (isMetaSearch) {
+    return (
+      <form onSubmit={handleSubmit} className="review-form">
+        <div className="form-row">
+          <div className="form-field">
+            <label>날짜 <span className="required">*</span></label>
+            <input type="date" value={form.recorded_at} onChange={e => set('recorded_at', e.target.value)} required />
+          </div>
+        </div>
+        <div className="meta-grid">
+          {METASEARCH_PLATFORMS.map(p => (
+            <div key={p.key} className="meta-card" style={{ borderTopColor: p.color }}>
+              <div className="meta-card-title" style={{ color: p.color }}>{p.label}</div>
+              <div className="form-field">
+                <label>평점</label>
+                <input type="number" placeholder="예: 4.5" value={form[p.scoreKey]} onChange={e => set(p.scoreKey, e.target.value)} step="0.1" min="0" max="10" />
+              </div>
+              <div className="form-field">
+                <label>리뷰 수</label>
+                <input type="number" placeholder="예: 1200" value={form[p.countKey]} onChange={e => set(p.countKey, e.target.value)} min="0" />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="form-actions">
+          <button type="submit" className="btn-primary" disabled={status === 'loading'}>
+            {status === 'loading' ? '저장 중...' : '점수 저장'}
+          </button>
+          {status === 'ok' && <span className="form-status ok">✓ 저장되었습니다</span>}
+          {status === 'error' && <span className="form-status error">✕ {errMsg}</span>}
+        </div>
+      </form>
+    );
+  }
+
+  // 일반 폼
   return (
     <form onSubmit={handleSubmit} className="review-form">
       <div className="form-row">
@@ -104,31 +188,31 @@ function ReviewForm({ property, onSaved }) {
         </div>
         <div className="form-field">
           <label>누적 리뷰 수</label>
-          <input type="number" placeholder={isAirbnb ? '예: 312' : '예: 8186'} value={form.review_count} onChange={e => set('review_count', e.target.value)} min="0" />
+          <input type="number" placeholder="예: 8186" value={form.review_count} onChange={e => set('review_count', e.target.value)} min="0" />
         </div>
         <div className="form-field">
           <label>종합 평점 <span className="required">*</span></label>
-          <input type="number" placeholder={isAirbnb ? '예: 4.9' : '예: 8.6'} value={form.overall_score} onChange={e => set('overall_score', e.target.value)} step="0.1" min="0" max={maxScore} required />
+          <input type="number" placeholder="예: 8.6" value={form.overall_score} onChange={e => set('overall_score', e.target.value)} step="0.1" min="0" max="10" required />
         </div>
       </div>
-
-      <div className="form-row">
-        {fields.map(f => (
-          <div className="form-field" key={f.key}>
-            <label>{f.label}</label>
-            <input
-              type="number"
-              placeholder={f.key === 'response_rate' ? '예: 98' : (isAirbnb ? '예: 4.8' : '예: 8.5')}
-              value={form[f.key]}
-              onChange={e => set(f.key, e.target.value)}
-              step={f.key === 'response_rate' ? '1' : '0.1'}
-              min="0"
-              max={f.key === 'response_rate' ? 100 : maxScore}
-            />
-          </div>
-        ))}
-      </div>
-
+      {fields.length > 0 && (
+        <div className="form-row">
+          {fields.map(f => (
+            <div className="form-field" key={f.key}>
+              <label>{f.label}</label>
+              <input
+                type="number"
+                placeholder={f.key === 'response_rate' ? '예: 98' : '예: 8.5'}
+                value={form[f.key] || ''}
+                onChange={e => set(f.key, e.target.value)}
+                step={f.key === 'response_rate' ? '1' : '0.1'}
+                min="0"
+                max={f.key === 'response_rate' ? 100 : 10}
+              />
+            </div>
+          ))}
+        </div>
+      )}
       <div className="form-actions">
         <button type="submit" className="btn-primary" disabled={status === 'loading'}>
           {status === 'loading' ? '저장 중...' : '점수 저장'}
@@ -144,6 +228,8 @@ function ReviewForm({ property, onSaved }) {
 function ReviewChart({ reviews, platform }) {
   const isAirbnb = platform === 'airbnb';
   const isBooking = platform === 'booking';
+  const isTripcom = platform === 'tripcom';
+  const isExpedia = platform === 'expedia';
   const sorted = [...reviews].sort((a, b) => a.recorded_at.localeCompare(b.recorded_at));
   const labels = sorted.map(r => r.recorded_at?.slice(0, 10) ?? '');
   const accent = PLATFORM_COLOR[platform];
@@ -162,15 +248,15 @@ function ReviewChart({ reviews, platform }) {
     },
   ];
 
-  if (!isAirbnb) {
-    const agodaExtras = [
+  const extraMap = {
+    agoda: [
       { key: 'cleanliness',     label: '청결',       color: '#6366f1' },
       { key: 'facilities',      label: '부대시설',    color: '#22c55e' },
       { key: 'location',        label: '위치',        color: '#f59e0b' },
       { key: 'service',         label: '서비스',      color: '#ef4444' },
       { key: 'value_for_money', label: '가격 만족도', color: '#14b8a6' },
-    ];
-    const bookingExtras = [
+    ],
+    booking: [
       { key: 'staff_friendliness', label: '직원 친절도', color: '#6366f1' },
       { key: 'facilities',         label: '시설',        color: '#22c55e' },
       { key: 'cleanliness',        label: '청결도',      color: '#f59e0b' },
@@ -178,36 +264,48 @@ function ReviewChart({ reviews, platform }) {
       { key: 'value_for_money',    label: '가성비',      color: '#14b8a6' },
       { key: 'location',           label: '위치',        color: '#8b5cf6' },
       { key: 'free_wifi',          label: '무료 Wi-Fi',  color: '#0ea5e9' },
-    ];
-    const extras = isBooking ? bookingExtras : agodaExtras;
-    extras.forEach(({ key, label, color }) => {
-      datasets.push({
-        label,
-        data: sorted.map(r => fmt(r[key])),
-        borderColor: color,
-        backgroundColor: 'transparent',
-        borderDash: [4, 3],
-        tension: 0.35,
-        pointRadius: 3,
-        borderWidth: 1.5,
-        fill: false,
-      });
+    ],
+    tripcom: [
+      { key: 'cleanliness', label: '청결도', color: '#6366f1' },
+      { key: 'facilities',  label: '시설',   color: '#22c55e' },
+      { key: 'location',    label: '위치',   color: '#f59e0b' },
+      { key: 'service',     label: '서비스', color: '#ef4444' },
+    ],
+    expedia: [
+      { key: 'cleanliness',        label: '청결도',        color: '#6366f1' },
+      { key: 'staff_service',      label: '직원 및 서비스', color: '#22c55e' },
+      { key: 'amenities',          label: '편의시설',       color: '#f59e0b' },
+      { key: 'property_condition', label: '시설 상태',      color: '#ef4444' },
+    ],
+  };
+
+  const extras = extraMap[platform] || [];
+  extras.forEach(({ key, label, color }) => {
+    datasets.push({
+      label,
+      data: sorted.map(r => fmt(r[key])),
+      borderColor: color,
+      backgroundColor: 'transparent',
+      borderDash: [4, 3],
+      tension: 0.35,
+      pointRadius: 3,
+      borderWidth: 1.5,
+      fill: false,
     });
-  }
+  });
 
   const options = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: { position: 'top', labels: { font: { size: 12, family: 'Pretendard' }, boxWidth: 12, padding: 16 } },
+      legend: { position: 'top', labels: { font: { size: 12 }, boxWidth: 12, padding: 16 } },
       tooltip: { mode: 'index', intersect: false },
     },
     scales: {
       x: { grid: { color: '#f0f0f0' }, ticks: { font: { size: 11 }, maxRotation: 45 } },
       y: {
-        min: isAirbnb ? 3 : 6,
-        max: isAirbnb ? 5 : 10,
-        ticks: { stepSize: isAirbnb ? 0.5 : 0.5, font: { size: 11 } },
+        min: 6, max: 10,
+        ticks: { stepSize: 0.5, font: { size: 11 } },
         grid: { color: '#f0f0f0' },
       },
     },
@@ -216,6 +314,50 @@ function ReviewChart({ reviews, platform }) {
   return (
     <div style={{ position: 'relative', height: '260px', width: '100%' }}>
       <Line data={{ labels, datasets }} options={options} />
+    </div>
+  );
+}
+
+// ── Meta-Search Charts (4개) ─────────────────────────
+function MetaSearchCharts({ reviews }) {
+  const sorted = [...reviews].sort((a, b) => a.recorded_at.localeCompare(b.recorded_at));
+  const labels = sorted.map(r => r.recorded_at?.slice(0, 10) ?? '');
+  const chartOptions = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+    scales: {
+      x: { grid: { color: '#f0f0f0' }, ticks: { font: { size: 10 }, maxRotation: 45 } },
+      y: { min: 3, max: 5, ticks: { stepSize: 0.5, font: { size: 10 } }, grid: { color: '#f0f0f0' } },
+    },
+  };
+  return (
+    <div className="meta-charts-grid">
+      {METASEARCH_PLATFORMS.map(p => (
+        <div key={p.key} className="meta-chart-item">
+          <div className="meta-chart-title" style={{ color: p.color }}>{p.label}</div>
+          <div style={{ position: 'relative', height: '180px' }}>
+            <Line
+              data={{
+                labels,
+                datasets: [{
+                  label: p.label,
+                  data: sorted.map(r => fmt(r[p.scoreKey])),
+                  borderColor: p.color,
+                  backgroundColor: p.color + '18',
+                  fill: true, tension: 0.35, pointRadius: 3, borderWidth: 2,
+                }]
+              }}
+              options={chartOptions}
+            />
+          </div>
+          <div className="meta-chart-latest">
+            최신: <strong>{fmtScore(sorted[sorted.length-1]?.[p.scoreKey])}</strong>
+            {sorted[sorted.length-1]?.[p.countKey] != null && (
+              <span> · {fmtCount(sorted[sorted.length-1][p.countKey])}건</span>
+            )}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -268,6 +410,9 @@ function ReviewCountChart({ reviews }) {
 function HistoryTable({ reviews, platform, onDelete }) {
   const isAirbnb = platform === 'airbnb';
   const isBooking = platform === 'booking';
+  const isTripcom = platform === 'tripcom';
+  const isExpedia = platform === 'expedia';
+  const isMetaSearch = platform === 'metasearch';
   const sorted = [...reviews].sort((a, b) => b.recorded_at.localeCompare(a.recorded_at));
 
   if (!sorted.length) return <p className="empty-msg">아직 기록이 없습니다</p>;
@@ -278,11 +423,21 @@ function HistoryTable({ reviews, platform, onDelete }) {
         <thead>
           <tr>
             <th>날짜</th>
-            <th>리뷰 수</th>
-            <th>종합</th>
-            {!isAirbnb && !isBooking && <><th>청결</th><th>부대시설</th><th>서비스</th><th>가격만족</th><th>위치</th></>}
-            {isAirbnb && <th>응답률</th>}
-            {isBooking && <><th>친절도</th><th>시설</th><th>청결도</th><th>편안함</th><th>가성비</th><th>위치</th><th>Wi-Fi</th></>}
+            {isMetaSearch ? (
+              <>
+                <th>Google</th><th>Naver</th><th>Kakao</th><th>Tripadvisor</th>
+              </>
+            ) : (
+              <>
+                <th>리뷰 수</th>
+                <th>종합</th>
+                {!isAirbnb && !isBooking && !isTripcom && !isExpedia && <><th>청결</th><th>부대시설</th><th>서비스</th><th>가격만족</th><th>위치</th></>}
+                {isAirbnb && <th>응답률</th>}
+                {isBooking && <><th>친절도</th><th>시설</th><th>청결도</th><th>편안함</th><th>가성비</th><th>위치</th><th>Wi-Fi</th></>}
+                {isTripcom && <><th>청결도</th><th>시설</th><th>위치</th><th>서비스</th></>}
+                {isExpedia && <><th>청결도</th><th>직원/서비스</th><th>편의시설</th><th>시설상태</th></>}
+              </>
+            )}
             <th></th>
           </tr>
         </thead>
@@ -290,25 +445,48 @@ function HistoryTable({ reviews, platform, onDelete }) {
           {sorted.map(r => (
             <tr key={r.id}>
               <td>{r.recorded_at?.slice(0, 10)}</td>
-              <td>{fmtCount(r.review_count)}</td>
-              <td><ScoreBadge value={r.overall_score} /></td>
-              {!isAirbnb && !isBooking && <>
-                <td><ScoreBadge value={r.cleanliness} /></td>
-                <td><ScoreBadge value={r.facilities} /></td>
-                <td><ScoreBadge value={r.service} /></td>
-                <td><ScoreBadge value={r.value_for_money} /></td>
-                <td><ScoreBadge value={r.location} /></td>
-              </>}
-              {isAirbnb && <td>{r.response_rate != null ? `${r.response_rate}%` : '—'}</td>}
-              {isBooking && <>
-                <td><ScoreBadge value={r.staff_friendliness} /></td>
-                <td><ScoreBadge value={r.facilities} /></td>
-                <td><ScoreBadge value={r.cleanliness} /></td>
-                <td><ScoreBadge value={r.comfort} /></td>
-                <td><ScoreBadge value={r.value_for_money} /></td>
-                <td><ScoreBadge value={r.location} /></td>
-                <td><ScoreBadge value={r.free_wifi} /></td>
-              </>}
+              {isMetaSearch ? (
+                <>
+                  <td><ScoreBadge value={r.google_score} />{r.google_count ? <span style={{fontSize:'11px',color:'#999',marginLeft:'4px'}}>({Number(r.google_count).toLocaleString()})</span> : ''}</td>
+                  <td><ScoreBadge value={r.naver_score} />{r.naver_count ? <span style={{fontSize:'11px',color:'#999',marginLeft:'4px'}}>({Number(r.naver_count).toLocaleString()})</span> : ''}</td>
+                  <td><ScoreBadge value={r.kakao_score} />{r.kakao_count ? <span style={{fontSize:'11px',color:'#999',marginLeft:'4px'}}>({Number(r.kakao_count).toLocaleString()})</span> : ''}</td>
+                  <td><ScoreBadge value={r.tripadvisor_score} />{r.tripadvisor_count ? <span style={{fontSize:'11px',color:'#999',marginLeft:'4px'}}>({Number(r.tripadvisor_count).toLocaleString()})</span> : ''}</td>
+                </>
+              ) : (
+                <>
+                  <td>{fmtCount(r.review_count)}</td>
+                  <td><ScoreBadge value={r.overall_score} /></td>
+                  {!isAirbnb && !isBooking && !isTripcom && !isExpedia && <>
+                    <td><ScoreBadge value={r.cleanliness} /></td>
+                    <td><ScoreBadge value={r.facilities} /></td>
+                    <td><ScoreBadge value={r.service} /></td>
+                    <td><ScoreBadge value={r.value_for_money} /></td>
+                    <td><ScoreBadge value={r.location} /></td>
+                  </>}
+                  {isAirbnb && <td>{r.response_rate != null ? `${r.response_rate}%` : '—'}</td>}
+                  {isBooking && <>
+                    <td><ScoreBadge value={r.staff_friendliness} /></td>
+                    <td><ScoreBadge value={r.facilities} /></td>
+                    <td><ScoreBadge value={r.cleanliness} /></td>
+                    <td><ScoreBadge value={r.comfort} /></td>
+                    <td><ScoreBadge value={r.value_for_money} /></td>
+                    <td><ScoreBadge value={r.location} /></td>
+                    <td><ScoreBadge value={r.free_wifi} /></td>
+                  </>}
+                  {isTripcom && <>
+                    <td><ScoreBadge value={r.cleanliness} /></td>
+                    <td><ScoreBadge value={r.facilities} /></td>
+                    <td><ScoreBadge value={r.location} /></td>
+                    <td><ScoreBadge value={r.service} /></td>
+                  </>}
+                  {isExpedia && <>
+                    <td><ScoreBadge value={r.cleanliness} /></td>
+                    <td><ScoreBadge value={r.staff_service} /></td>
+                    <td><ScoreBadge value={r.amenities} /></td>
+                    <td><ScoreBadge value={r.property_condition} /></td>
+                  </>}
+                </>
+              )}
               <td>
                 <button className="btn-delete" onClick={() => onDelete(r.id)} title="삭제">×</button>
               </td>
@@ -341,7 +519,10 @@ function PropertyPanel({ property }) {
 
   const isAirbnb = property.platform === 'airbnb';
   const isBooking = property.platform === 'booking';
-  const latest = reviews[0];
+  const isTripcom = property.platform === 'tripcom';
+  const isExpedia = property.platform === 'expedia';
+  const isMetaSearch = property.platform === 'metasearch';
+  const isSimple = ['yeogieottae', 'nol'].includes(property.platform);
   const prev = reviews[1];
   const accent = PLATFORM_COLOR[property.platform];
 
@@ -387,38 +568,60 @@ function PropertyPanel({ property }) {
 
       {tab === 'dashboard' && (
         <div className="panel-body">
-          {latest ? (
+          {latest || (isMetaSearch && reviews.length > 0) ? (
             <>
-              <div className="stats-grid">
-                <StatCard label="종합 평점" value={<>{fmtScore(latest.overall_score)}{diffEl('overall_score')}</>} sub={`기준일: ${latest.recorded_at?.slice(0, 10)}`} />
-                <StatCard label="누적 리뷰 수" value={fmtCount(latest.review_count)} />
-                {/* Agoda 전용 */}
-                {!isAirbnb && !isBooking && <StatCard label="청결" value={<>{fmtScore(latest.cleanliness)}{diffEl('cleanliness')}</>} />}
-                {!isAirbnb && !isBooking && <StatCard label="부대시설" value={<>{fmtScore(latest.facilities)}{diffEl('facilities')}</>} />}
-                {!isAirbnb && !isBooking && <StatCard label="위치" value={<>{fmtScore(latest.location)}{diffEl('location')}</>} />}
-                {!isAirbnb && !isBooking && <StatCard label="서비스" value={<>{fmtScore(latest.service)}{diffEl('service')}</>} />}
-                {!isAirbnb && !isBooking && <StatCard label="가격 만족도" value={<>{fmtScore(latest.value_for_money)}{diffEl('value_for_money')}</>} />}
-                {/* Airbnb 전용 */}
-                {isAirbnb && <StatCard label="응답률" value={latest.response_rate != null ? `${latest.response_rate}%` : '—'} />}
-                {/* Booking.com 전용 */}
-                {isBooking && <StatCard label="직원 친절도" value={<>{fmtScore(latest.staff_friendliness)}{diffEl('staff_friendliness')}</>} />}
-                {isBooking && <StatCard label="시설" value={<>{fmtScore(latest.facilities)}{diffEl('facilities')}</>} />}
-                {isBooking && <StatCard label="청결도" value={<>{fmtScore(latest.cleanliness)}{diffEl('cleanliness')}</>} />}
-                {isBooking && <StatCard label="편안함" value={<>{fmtScore(latest.comfort)}{diffEl('comfort')}</>} />}
-                {isBooking && <StatCard label="가성비" value={<>{fmtScore(latest.value_for_money)}{diffEl('value_for_money')}</>} />}
-                {isBooking && <StatCard label="위치" value={<>{fmtScore(latest.location)}{diffEl('location')}</>} />}
-                {isBooking && <StatCard label="무료 Wi-Fi" value={<>{fmtScore(latest.free_wifi)}{diffEl('free_wifi')}</>} />}
-              </div>
-              {reviews.length >= 2 && (
+              {/* Meta-Search 전용 뷰 */}
+              {isMetaSearch ? (
                 <>
                   <div className="chart-section">
-                    <h3 className="section-title">평점 추이</h3>
-                    <ReviewChart reviews={reviews} platform={property.platform} />
+                    <h3 className="section-title">플랫폼별 평점 추이</h3>
+                    <MetaSearchCharts reviews={reviews} />
                   </div>
-                  <div className="chart-section" style={{ marginTop: '24px' }}>
-                    <h3 className="section-title">누적 리뷰 수 추이</h3>
-                    <ReviewCountChart reviews={reviews} />
+                </>
+              ) : (
+                <>
+                  <div className="stats-grid">
+                    <StatCard label="종합 평점" value={<>{fmtScore(latest.overall_score)}{diffEl('overall_score')}</>} sub={`기준일: ${latest.recorded_at?.slice(0, 10)}`} />
+                    <StatCard label="누적 리뷰 수" value={fmtCount(latest.review_count)} />
+                    {/* Agoda 전용 */}
+                    {!isAirbnb && !isBooking && !isTripcom && !isExpedia && !isSimple && <StatCard label="청결" value={<>{fmtScore(latest.cleanliness)}{diffEl('cleanliness')}</>} />}
+                    {!isAirbnb && !isBooking && !isTripcom && !isExpedia && !isSimple && <StatCard label="부대시설" value={<>{fmtScore(latest.facilities)}{diffEl('facilities')}</>} />}
+                    {!isAirbnb && !isBooking && !isTripcom && !isExpedia && !isSimple && <StatCard label="위치" value={<>{fmtScore(latest.location)}{diffEl('location')}</>} />}
+                    {!isAirbnb && !isBooking && !isTripcom && !isExpedia && !isSimple && <StatCard label="서비스" value={<>{fmtScore(latest.service)}{diffEl('service')}</>} />}
+                    {!isAirbnb && !isBooking && !isTripcom && !isExpedia && !isSimple && <StatCard label="가격 만족도" value={<>{fmtScore(latest.value_for_money)}{diffEl('value_for_money')}</>} />}
+                    {/* Airbnb 전용 */}
+                    {isAirbnb && <StatCard label="응답률" value={latest.response_rate != null ? `${latest.response_rate}%` : '—'} />}
+                    {/* Booking.com 전용 */}
+                    {isBooking && <StatCard label="직원 친절도" value={<>{fmtScore(latest.staff_friendliness)}{diffEl('staff_friendliness')}</>} />}
+                    {isBooking && <StatCard label="시설" value={<>{fmtScore(latest.facilities)}{diffEl('facilities')}</>} />}
+                    {isBooking && <StatCard label="청결도" value={<>{fmtScore(latest.cleanliness)}{diffEl('cleanliness')}</>} />}
+                    {isBooking && <StatCard label="편안함" value={<>{fmtScore(latest.comfort)}{diffEl('comfort')}</>} />}
+                    {isBooking && <StatCard label="가성비" value={<>{fmtScore(latest.value_for_money)}{diffEl('value_for_money')}</>} />}
+                    {isBooking && <StatCard label="위치" value={<>{fmtScore(latest.location)}{diffEl('location')}</>} />}
+                    {isBooking && <StatCard label="무료 Wi-Fi" value={<>{fmtScore(latest.free_wifi)}{diffEl('free_wifi')}</>} />}
+                    {/* Trip.com 전용 */}
+                    {isTripcom && <StatCard label="청결도" value={<>{fmtScore(latest.cleanliness)}{diffEl('cleanliness')}</>} />}
+                    {isTripcom && <StatCard label="시설" value={<>{fmtScore(latest.facilities)}{diffEl('facilities')}</>} />}
+                    {isTripcom && <StatCard label="위치" value={<>{fmtScore(latest.location)}{diffEl('location')}</>} />}
+                    {isTripcom && <StatCard label="서비스" value={<>{fmtScore(latest.service)}{diffEl('service')}</>} />}
+                    {/* Expedia 전용 */}
+                    {isExpedia && <StatCard label="청결도" value={<>{fmtScore(latest.cleanliness)}{diffEl('cleanliness')}</>} />}
+                    {isExpedia && <StatCard label="직원 및 서비스" value={<>{fmtScore(latest.staff_service)}{diffEl('staff_service')}</>} />}
+                    {isExpedia && <StatCard label="편의시설" value={<>{fmtScore(latest.amenities)}{diffEl('amenities')}</>} />}
+                    {isExpedia && <StatCard label="시설 상태" value={<>{fmtScore(latest.property_condition)}{diffEl('property_condition')}</>} />}
                   </div>
+                  {reviews.length >= 2 && (
+                    <>
+                      <div className="chart-section">
+                        <h3 className="section-title">평점 추이</h3>
+                        <ReviewChart reviews={reviews} platform={property.platform} />
+                      </div>
+                      <div className="chart-section" style={{ marginTop: '24px' }}>
+                        <h3 className="section-title">누적 리뷰 수 추이</h3>
+                        <ReviewCountChart reviews={reviews} />
+                      </div>
+                    </>
+                  )}
                 </>
               )}
             </>
@@ -560,6 +763,11 @@ export default function Home() {
                   <option value="agoda">Agoda</option>
                   <option value="airbnb">Airbnb</option>
                   <option value="booking">Booking.com</option>
+                  <option value="tripcom">Trip.com</option>
+                  <option value="expedia">Expedia</option>
+                  <option value="yeogieottae">여기어때</option>
+                  <option value="nol">NOL</option>
+                  <option value="metasearch">Meta-Search</option>
                 </select>
               </div>
               <div className="form-actions">

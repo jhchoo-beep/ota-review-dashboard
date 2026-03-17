@@ -109,14 +109,15 @@ function ReviewForm({ property, onSaved }) {
   const isMetaSearch = platform === 'metasearch';
   const fields = getFields(platform);
 
-  const [form, setForm] = useState({
-    recorded_at: today(), review_count: '', overall_score: '',
+  const [form, setForm] = useState(() => ({
+    recorded_at: new Date().toLocaleDateString('en-CA'), // 항상 오늘 날짜
+    review_count: '', overall_score: '',
     response_rate: '', cleanliness: '', facilities: '', location: '',
     service: '', value_for_money: '', staff_friendliness: '', comfort: '',
     free_wifi: '', staff_service: '', amenities: '', property_condition: '',
     google_score: '', naver_score: '', kakao_score: '', tripadvisor_score: '',
     google_count: '', naver_count: '', kakao_count: '', tripadvisor_count: '',
-  });
+  }));
   const [status, setStatus] = useState('idle');
   const [errMsg, setErrMsg] = useState('');
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -638,7 +639,7 @@ function PropertyPanel({ property }) {
       {tab === 'input' && (
         <div className="panel-body">
           <h3 className="section-title">새 점수 입력</h3>
-          <ReviewForm property={property} onSaved={() => { load(); }} />
+          <ReviewForm key={`${property.id}-${tab}`} property={property} onSaved={() => { load(); }} />
         </div>
       )}
 

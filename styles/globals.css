@@ -536,3 +536,152 @@ body {
   .form-row { grid-template-columns: repeat(2, 1fr); }
   .panel-header { flex-direction: column; }
 }
+
+/* ══════════════════════════════════════════════════════
+   모바일 반응형 (768px 이하)
+══════════════════════════════════════════════════════ */
+
+/* ── 모바일 상단 헤더 ─────────────────────────────── */
+.mobile-header {
+  display: none;
+}
+
+/* ── 사이드바 오버레이 ──────────────────────────────── */
+.sidebar-overlay {
+  display: none;
+}
+
+@media (max-width: 768px) {
+
+  /* 모바일 상단 헤더 표시 */
+  .mobile-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 52px;
+    background: #0f1117;
+    padding: 0 16px;
+    z-index: 200;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+
+  /* 햄버거 버튼 */
+  .hamburger {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    width: 32px;
+    height: 32px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    flex-shrink: 0;
+  }
+  .hamburger span {
+    display: block;
+    width: 100%;
+    height: 2px;
+    background: rgba(255,255,255,0.7);
+    border-radius: 2px;
+  }
+
+  .mobile-logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* 사이드바 — 기본은 숨김, 열리면 슬라이드 인 */
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    z-index: 300;
+  }
+  .sidebar.sidebar-open {
+    transform: translateX(0);
+  }
+
+  /* PC용 사이드바 로고는 모바일에서 숨김 (헤더에 표시) */
+  .sidebar .sidebar-logo {
+    display: none;
+  }
+
+  /* 오버레이 */
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 250;
+  }
+
+  /* 메인 콘텐츠 — 상단 헤더 높이만큼 내려오고, 사이드바 margin 제거 */
+  .main {
+    margin-left: 0 !important;
+    padding: 16px;
+    padding-top: 68px; /* 52px 헤더 + 여백 */
+  }
+
+  /* ── 패널 헤더 ────────────────────────────────────── */
+  .panel-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 16px 16px 0;
+  }
+  .panel-header-right {
+    width: 100%;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .panel-body { padding: 16px; }
+
+  /* ── Stat Cards ──────────────────────────────────── */
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .stat-value { font-size: 18px; }
+
+  /* ── 차트 ─────────────────────────────────────────── */
+  .chart-wrap { height: 200px !important; }
+
+  /* ── Meta-Search 차트 그리드 ─────────────────────── */
+  .meta-charts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* ── 입력 폼 ──────────────────────────────────────── */
+  .form-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .meta-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* ── 히스토리 테이블 ──────────────────────────────── */
+  .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ── 모달 ─────────────────────────────────────────── */
+  .modal {
+    width: calc(100vw - 32px);
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+
+  /* ── 탭 버튼 ──────────────────────────────────────── */
+  .tab-btn {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+  .btn-input {
+    font-size: 12px;
+    padding: 7px 12px;
+  }
+}

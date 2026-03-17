@@ -41,7 +41,7 @@ body {
   position: fixed;
   top: 0; left: 0; bottom: 0;
   z-index: 50;
-  padding: 0;
+  overflow: hidden;
 }
 
 .sidebar-logo {
@@ -70,8 +70,8 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 2px;
   min-height: 0;
+  overflow: hidden;
 }
 
 .nav-scroll {
@@ -163,20 +163,21 @@ body {
 
 .nav-add {
   width: 100%;
-  padding: 9px 10px;
+  padding: 9px 12px;
   border: none;
   border-radius: 6px;
-  background: rgba(255,255,255,0.08);
-  color: rgba(255,255,255,0.7);
+  background: linear-gradient(135deg, #E84393, #FF5A5F);
+  color: #fff;
   font-size: 13px;
   font-family: inherit;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: opacity 0.15s;
   text-align: left;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
+  flex-shrink: 0;
 }
-.nav-add:hover { background: rgba(255,255,255,0.14); color: #fff; }
+.nav-add:hover { opacity: 0.85; }
 
 .nav-group { margin-bottom: 8px; }
 .nav-group-label {

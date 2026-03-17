@@ -27,5 +27,15 @@ export default async function handler(req, res) {
     }
   }
 
+  // 순서 일괄 업데이트: body = [{ id, sort_order }, ...]
+  if (req.method === 'PATCH') {
+    const { orders } = req.body;
+    if (!Array.isArray(orders)) return res.status(400).json({ error: 'orders 배열 필요' });
+    for (const { id, sort_order } of orders) {
+      await sql`UPDATE properties SET sort_order = ${sort_order} WHERE id = ${id}`;
+    }
+    return res.status(200).json({ ok: true });
+  }
+
   res.status(405).end();
 }

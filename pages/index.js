@@ -757,9 +757,13 @@ export default function Home() {
           </div>
 
           <nav className="property-nav">
+            <button className="nav-add" onClick={() => setShowAddModal(true)}>
+              + 지점 & OTA 추가
+            </button>
             <div className="nav-label-row">
               <span className="nav-label">지점 목록</span>
             </div>
+            <div className="nav-scroll">
             {groupList.map((grp, gi) => {
               const isThisReordering = reorderingGroup === grp.name;
               return (
@@ -802,9 +806,7 @@ export default function Home() {
                 </div>
               );
             })}
-            <button className="nav-add" onClick={() => setShowAddModal(true)}>
-              + 지점 추가
-            </button>
+            </div>
           </nav>
         </aside>
 
@@ -858,7 +860,7 @@ export default function Home() {
                   <label>새 지점명 입력</label>
                   <input
                     type="text"
-                    placeholder="예: 맹그로브 아부다비"
+                    placeholder="예: 맹그로브 부산"
                     value={newNameCustom}
                     onChange={e => setNewNameCustom(e.target.value)}
                     required

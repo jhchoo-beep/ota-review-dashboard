@@ -761,7 +761,11 @@ export default function Home() {
           </div>
 
           <nav className="property-nav">
-            <button className="nav-add" onClick={() => setShowAddModal(true)}>
+            {/* 모바일에서 사이드바 닫기 버튼 */}
+            <button className="sidebar-close" onClick={() => setSidebarOpen(false)}>
+              ✕ 닫기
+            </button>
+            <button className="nav-add" onClick={() => { setShowAddModal(true); setSidebarOpen(false); }}>
               + 지점 & OTA 추가
             </button>
             <div className="nav-label-row">

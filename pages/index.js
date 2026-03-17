@@ -690,11 +690,12 @@ export default function Home() {
     newItems.splice(dragOver.current, 0, dragged);
     dragItem.current = null; dragOver.current = null;
 
-    // 해당 그룹의 sort_order만 업데이트
-    const groupIdx = groupList.findIndex(g => g.name === groupName);
+    // 기존 sort_order에서 지점 번호(앞자리) 보존 — OTA 순서(뒷자리)만 변경
+    // 예: 기존 sort_order가 200, 201, 202면 200단위는 유지하고 0,1,2만 바꿈
+    const baseOrder = Math.floor(Math.min(...grp.items.map(p => p.sort_order ?? 99)) / 100) * 100;
     const orders = newItems.map((p, pi) => ({
       id: p.id,
-      sort_order: groupIdx * 100 + pi,
+      sort_order: baseOrder + pi,
     }));
     await fetch('/api/properties', {
       method: 'PATCH',

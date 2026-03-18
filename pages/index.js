@@ -54,12 +54,10 @@ const EXPEDIA_FIELDS = [
 // 여기어때, NOL 세부항목 없음
 const YEOGI_FIELDS = [];
 const NOL_FIELDS = [];
-// Meta-Search: 4개 플랫폼 한 번에 입력
+// Meta-Search: Google + Kakao만 표시
 const METASEARCH_PLATFORMS = [
-  { key: 'google',      label: 'Google',      color: '#EA4335', scoreKey: 'google_score',      countKey: 'google_count' },
-  { key: 'naver',       label: 'Naver',       color: '#03C75A', scoreKey: 'naver_score',       countKey: 'naver_count' },
-  { key: 'kakao',       label: 'Kakao',       color: '#FAE100', scoreKey: 'kakao_score',       countKey: 'kakao_count' },
-  { key: 'tripadvisor', label: 'Tripadvisor', color: '#34E0A1', scoreKey: 'tripadvisor_score', countKey: 'tripadvisor_count' },
+  { key: 'google', label: 'Google', color: '#EA4335', scoreKey: 'google_score', countKey: 'google_count' },
+  { key: 'kakao',  label: 'Kakao',  color: '#FAE100', scoreKey: 'kakao_score',  countKey: 'kakao_count' },
 ];
 
 function getFields(platform) {
@@ -115,8 +113,8 @@ function ReviewForm({ property, onSaved }) {
     response_rate: '', cleanliness: '', facilities: '', location: '',
     service: '', value_for_money: '', staff_friendliness: '', comfort: '',
     free_wifi: '', staff_service: '', amenities: '', property_condition: '',
-    google_score: '', naver_score: '', kakao_score: '', tripadvisor_score: '',
-    google_count: '', naver_count: '', kakao_count: '', tripadvisor_count: '',
+    google_score: '', kakao_score: '',
+    google_count: '', kakao_count: '',
   }));
   const [status, setStatus] = useState('idle');
   const [errMsg, setErrMsg] = useState('');
@@ -426,7 +424,7 @@ function HistoryTable({ reviews, platform, onDelete }) {
             <th>날짜</th>
             {isMetaSearch ? (
               <>
-                <th>Google</th><th>Naver</th><th>Kakao</th><th>Tripadvisor</th>
+                <th>Google</th><th>Kakao</th>
               </>
             ) : (
               <>
@@ -449,9 +447,7 @@ function HistoryTable({ reviews, platform, onDelete }) {
               {isMetaSearch ? (
                 <>
                   <td><ScoreBadge value={r.google_score} />{r.google_count ? <span style={{fontSize:'11px',color:'#999',marginLeft:'4px'}}>({Number(r.google_count).toLocaleString()})</span> : ''}</td>
-                  <td><ScoreBadge value={r.naver_score} />{r.naver_count ? <span style={{fontSize:'11px',color:'#999',marginLeft:'4px'}}>({Number(r.naver_count).toLocaleString()})</span> : ''}</td>
                   <td><ScoreBadge value={r.kakao_score} />{r.kakao_count ? <span style={{fontSize:'11px',color:'#999',marginLeft:'4px'}}>({Number(r.kakao_count).toLocaleString()})</span> : ''}</td>
-                  <td><ScoreBadge value={r.tripadvisor_score} />{r.tripadvisor_count ? <span style={{fontSize:'11px',color:'#999',marginLeft:'4px'}}>({Number(r.tripadvisor_count).toLocaleString()})</span> : ''}</td>
                 </>
               ) : (
                 <>

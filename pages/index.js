@@ -144,7 +144,7 @@ function ReviewForm({ property, onSaved }) {
   // Meta-Search 전용 폼
   if (isMetaSearch) {
     return (
-      <form onSubmit={handleSubmit} className="review-form">
+      <form id="review-form" onSubmit={handleSubmit} className="review-form">
         <div className="form-row">
           <div className="form-field">
             <label>날짜 <span className="required">*</span></label>
@@ -166,20 +166,15 @@ function ReviewForm({ property, onSaved }) {
             </div>
           ))}
         </div>
-        <div className="form-actions">
-          <button type="submit" className="btn-primary" disabled={status === 'loading'}>
-            {status === 'loading' ? '저장 중...' : '점수 저장'}
-          </button>
-          {status === 'ok' && <span className="form-status ok">✓ 저장되었습니다</span>}
-          {status === 'error' && <span className="form-status error">✕ {errMsg}</span>}
-        </div>
+        {status === 'ok' && <p className="form-status ok" style={{marginTop:'8px'}}>✓ 저장되었습니다</p>}
+        {status === 'error' && <p className="form-status error" style={{marginTop:'8px'}}>✕ {errMsg}</p>}
       </form>
     );
   }
 
   // 일반 폼
   return (
-    <form onSubmit={handleSubmit} className="review-form">
+    <form id="review-form" onSubmit={handleSubmit} className="review-form">
       <div className="form-row">
         <div className="form-field">
           <label>날짜</label>
@@ -212,18 +207,11 @@ function ReviewForm({ property, onSaved }) {
           ))}
         </div>
       )}
-      <div className="form-actions">
-        <button type="submit" className="btn-primary" disabled={status === 'loading'}>
-          {status === 'loading' ? '저장 중...' : '점수 저장'}
-        </button>
-        {status === 'ok' && <span className="form-status ok">✓ 저장되었습니다</span>}
-        {status === 'error' && <span className="form-status error">✕ {errMsg}</span>}
-      </div>
+      {status === 'ok' && <p className="form-status ok" style={{marginTop:'8px'}}>✓ 저장되었습니다</p>}
+      {status === 'error' && <p className="form-status error" style={{marginTop:'8px'}}>✕ {errMsg}</p>}
     </form>
   );
-}
-
-// ── Chart ────────────────────────────────────────────
+} ────────────────────────────────────────────
 function ReviewChart({ reviews, platform }) {
   const isAirbnb = platform === 'airbnb';
   const isBooking = platform === 'booking';
@@ -570,7 +558,16 @@ function PropertyPanel({ property }) {
           >
             {tab === 'input' ? '✕ 닫기' : '+ 점수 입력'}
           </button>
-        </div>
+          {tab === 'input' && (
+            <button
+              type="submit"
+              form="review-form"
+              className="btn-input"
+              style={{ background: accent, color: '#fff', borderColor: accent, marginLeft: '8px' }}
+            >
+              점수 저장
+            </button>
+          )}        </div>
       </div>
 
       {tab === 'dashboard' && (

@@ -78,7 +78,7 @@ function fmt(v) { return v != null ? Number(v) : null; }
 function fmtScore(v) { return v != null ? Number(v).toFixed(1) : '—'; }
 function fmtCount(v) { return v != null ? Number(v).toLocaleString() : '—'; }
 
-// ── Score Badge ─────────────────────────────────────
+// -- Score Badge
 function ScoreBadge({ value, max = 10 }) {
   if (value == null) return <span className="score-null">—</span>;
   const pct = (value / max) * 100;
@@ -90,7 +90,7 @@ function ScoreBadge({ value, max = 10 }) {
   );
 }
 
-// ── Stat Card ────────────────────────────────────────
+// -- Stat Card
 function StatCard({ label, value, sub }) {
   return (
     <div className="stat-card">
@@ -101,7 +101,7 @@ function StatCard({ label, value, sub }) {
   );
 }
 
-// ── Review Form ──────────────────────────────────────
+// -- Review Form
 function ReviewForm({ property, onSaved }) {
   const platform = property.platform;
   const isMetaSearch = platform === 'metasearch';
@@ -211,7 +211,9 @@ function ReviewForm({ property, onSaved }) {
       {status === 'error' && <p className="form-status error" style={{marginTop:'8px'}}>✕ {errMsg}</p>}
     </form>
   );
-} ────────────────────────────────────────────
+}
+
+// -- Chart
 function ReviewChart({ reviews, platform }) {
   const isAirbnb = platform === 'airbnb';
   const isBooking = platform === 'booking';
@@ -310,7 +312,7 @@ function ReviewChart({ reviews, platform }) {
   );
 }
 
-// ── Meta-Search Charts (4개) ─────────────────────────
+// -- Meta-Search Charts (4개)
 function MetaSearchCharts({ reviews }) {
   const sorted = [...reviews].sort((a, b) => a.recorded_at.localeCompare(b.recorded_at));
   const labels = sorted.map(r => r.recorded_at?.slice(0, 10) ?? '');
@@ -354,7 +356,7 @@ function MetaSearchCharts({ reviews }) {
   );
 }
 
-// ── Review Count Chart ───────────────────────────────
+// -- Review Count Chart
 function ReviewCountChart({ reviews }) {
   const sorted = [...reviews].sort((a, b) => a.recorded_at.localeCompare(b.recorded_at));
   const labels = sorted.map(r => r.recorded_at?.slice(0, 10) ?? '');
@@ -398,7 +400,7 @@ function ReviewCountChart({ reviews }) {
   );
 }
 
-// ── History Table ────────────────────────────────────
+// -- History Table
 function HistoryTable({ reviews, platform, onDelete }) {
   const isAirbnb = platform === 'airbnb';
   const isBooking = platform === 'booking';
@@ -490,7 +492,7 @@ function HistoryTable({ reviews, platform, onDelete }) {
   );
 }
 
-// ── Property Panel ───────────────────────────────────
+// -- Property Panel
 function PropertyPanel({ property }) {
   const [reviews, setReviews] = useState([]);
   const [tab, setTab] = useState('dashboard'); // dashboard | input | history
@@ -655,7 +657,7 @@ function PropertyPanel({ property }) {
   );
 }
 
-// ── Main Page ────────────────────────────────────────
+// -- Main Page
 export default function Home() {
   const [properties, setProperties] = useState([]);
   const [selected, setSelected] = useState(null);

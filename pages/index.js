@@ -643,7 +643,7 @@ function PropertyPanel({ property }) {
       {tab === 'input' && (
         <div className="panel-body">
           <h3 className="section-title">새 점수 입력</h3>
-          <ReviewForm key={`${property.id}-${tab}`} property={property} onSaved={() => { load(); }} />
+          <ReviewForm key={`${property.id}-${tab}`} property={property} onSaved={() => { load(); setTab('dashboard'); }} />
         </div>
       )}
 

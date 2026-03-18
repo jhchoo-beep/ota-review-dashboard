@@ -229,6 +229,10 @@ function ReviewChart({ reviews, platform }) {
   const isBooking = platform === 'booking';
   const isTripcom = platform === 'tripcom';
   const isExpedia = platform === 'expedia';
+
+  // 5점 만점 플랫폼: Airbnb, NOL
+  const is5Point = ['airbnb', 'nol'].includes(platform);
+
   const sorted = [...reviews].sort((a, b) => a.recorded_at.localeCompare(b.recorded_at));
   const labels = sorted.map(r => r.recorded_at?.slice(0, 10) ?? '');
   const accent = PLATFORM_COLOR[platform];
@@ -303,7 +307,8 @@ function ReviewChart({ reviews, platform }) {
     scales: {
       x: { grid: { color: '#f0f0f0' }, ticks: { font: { size: 11 }, maxRotation: 45 } },
       y: {
-        min: 6, max: 10,
+        min: is5Point ? 3 : 6,
+        max: is5Point ? 5 : 10,
         ticks: { stepSize: 0.5, font: { size: 11 } },
         grid: { color: '#f0f0f0' },
       },
@@ -412,6 +417,8 @@ function HistoryTable({ reviews, platform, onDelete }) {
   const isTripcom = platform === 'tripcom';
   const isExpedia = platform === 'expedia';
   const isMetaSearch = platform === 'metasearch';
+  const is5Point = ['airbnb', 'nol'].includes(platform);
+  const scoreMax = is5Point ? 5 : 10;
   const sorted = [...reviews].sort((a, b) => b.recorded_at.localeCompare(a.recorded_at));
 
   if (!sorted.length) return <p className="empty-msg">아직 기록이 없습니다</p>;
@@ -452,7 +459,7 @@ function HistoryTable({ reviews, platform, onDelete }) {
               ) : (
                 <>
                   <td>{fmtCount(r.review_count)}</td>
-                  <td><ScoreBadge value={r.overall_score} /></td>
+                  <td><ScoreBadge value={r.overall_score} max={scoreMax} /></td>
                   {!isAirbnb && !isBooking && !isTripcom && !isExpedia && <>
                     <td><ScoreBadge value={r.cleanliness} /></td>
                     <td><ScoreBadge value={r.facilities} /></td>
@@ -520,6 +527,8 @@ function PropertyPanel({ property }) {
   const isExpedia = property.platform === 'expedia';
   const isMetaSearch = property.platform === 'metasearch';
   const isSimple = ['yeogieottae', 'nol'].includes(property.platform);
+  const is5Point = ['airbnb', 'nol'].includes(property.platform);
+  const scoreMax = is5Point ? 5 : 10;
   const latest = reviews[0];
   const prev = reviews[1];
   const accent = PLATFORM_COLOR[property.platform];
@@ -579,7 +588,7 @@ function PropertyPanel({ property }) {
               ) : (
                 <>
                   <div className="stats-grid">
-                    <StatCard label="종합 평점" value={<>{fmtScore(latest.overall_score)}{diffEl('overall_score')}</>} sub={`기준일: ${latest.recorded_at?.slice(0, 10)}`} />
+                    <StatCard label="종합 평점" value={<>{fmtScore(latest.overall_score)}<span style={{fontSize:'13px',color:'var(--text-3)',fontWeight:400}}> /{scoreMax}</span>{diffEl('overall_score')}</>} sub={`기준일: ${latest.recorded_at?.slice(0, 10)}`} />
                     <StatCard label="누적 리뷰 수" value={fmtCount(latest.review_count)} />
                     {/* Agoda 전용 */}
                     {!isAirbnb && !isBooking && !isTripcom && !isExpedia && !isSimple && <StatCard label="청결" value={<>{fmtScore(latest.cleanliness)}{diffEl('cleanliness')}</>} />}

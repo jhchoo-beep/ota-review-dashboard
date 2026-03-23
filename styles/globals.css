@@ -911,3 +911,35 @@ body {
   display: inline-block; font-size: 11px; padding: 2px 8px;
   border-radius: 99px; background: #FCEBEB; color: #791F1F;
 }
+
+/* -- 슈퍼호스트 대시보드 배너 */
+.sh-dashboard-banner {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.sh-dashboard-banner:hover { opacity: 0.82; }
+.sh-dashboard-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.sh-dashboard-label {
+  font-size: 13px;
+  font-weight: 500;
+}
+.sh-dashboard-period {
+  font-size: 12px;
+  margin-left: 6px;
+  opacity: 0.75;
+}
+.sh-dashboard-arrow {
+  font-size: 12px;
+  font-weight: 500;
+}

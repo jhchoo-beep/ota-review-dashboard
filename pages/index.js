@@ -726,8 +726,8 @@ function OKRDashboard({ properties }) {
                         <div key={p.id} className="okr-ota-row okr-ota-meta">
                           <span className="okr-ota-dot" style={{ background: accent }} />
                           <span className="okr-ota-name">Meta-Search</span>
-                          <span className="okr-ota-score" style={{ color: accent }}>
-                            G {isNaN(g) ? '—' : g.toFixed(1)} / K {isNaN(k) ? '—' : k.toFixed(1)}
+                          <span className="okr-ota-score" style={{ color: accent, fontSize: '11px' }}>
+                            Google {isNaN(g) ? '—' : g.toFixed(1)} / Kakao {isNaN(k) ? '—' : k.toFixed(1)}
                           </span>
                           <span className="okr-ota-ref">참고</span>
                         </div>

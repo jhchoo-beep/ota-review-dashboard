@@ -943,3 +943,279 @@ body {
   font-size: 12px;
   font-weight: 500;
 }
+
+/* ============================
+   OKR 대시보드 메인 페이지
+   ============================ */
+.okr-page {
+  padding: 32px 36px;
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.okr-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.okr-tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6366f1;
+  background: #6366f111;
+  border: 1px solid #6366f133;
+  border-radius: 99px;
+  padding: 3px 10px;
+  margin-bottom: 10px;
+}
+
+.okr-title {
+  font-size: 26px;
+  font-weight: 500;
+  color: var(--text-1);
+  margin: 0 0 6px;
+}
+
+.okr-subtitle {
+  font-size: 14px;
+  color: var(--text-2);
+  margin: 0;
+  max-width: 560px;
+  line-height: 1.6;
+}
+
+.okr-progress-wrap {
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.okr-progress-label {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-bottom: 6px;
+}
+
+.okr-progress-circle {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.okr-progress-pct {
+  position: absolute;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-1);
+}
+
+.okr-legend {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.okr-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.okr-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.okr-targets {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
+.okr-target-chip {
+  font-size: 12px;
+  color: var(--text-2);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 10px;
+}
+
+.okr-target-chip strong {
+  color: var(--text-1);
+}
+
+.okr-loading {
+  text-align: center;
+  padding: 60px;
+  color: var(--text-3);
+  font-size: 14px;
+}
+
+/* 4개 지점 그리드 */
+.okr-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 800px) {
+  .okr-grid { grid-template-columns: 1fr; }
+  .okr-page { padding: 20px 16px; }
+  .okr-header { flex-direction: column; }
+}
+
+.okr-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 20px;
+}
+
+.okr-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.okr-card-name {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-1);
+}
+
+.okr-card-ratio {
+  font-size: 13px;
+  color: var(--text-2);
+  font-weight: 500;
+}
+
+.okr-card-bar-wrap {
+  margin-bottom: 16px;
+}
+
+.okr-card-bar {
+  height: 5px;
+  background: var(--bg);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.okr-card-bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.4s ease;
+}
+
+/* OTA 행 */
+.okr-ota-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.okr-ota-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.okr-ota-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.okr-ota-name {
+  width: 88px;
+  flex-shrink: 0;
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+/* 미니 진행 바 */
+.okr-mini-bar-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.okr-mini-bar {
+  height: 4px;
+  background: var(--bg);
+  border-radius: 99px;
+  position: relative;
+  overflow: visible;
+}
+
+.okr-mini-bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.4s ease;
+}
+
+.okr-mini-bar-target {
+  position: absolute;
+  top: -3px;
+  width: 2px;
+  height: 10px;
+  background: var(--text-3);
+  border-radius: 1px;
+  transform: translateX(-50%);
+}
+
+.okr-ota-score {
+  font-size: 12px;
+  font-weight: 500;
+  min-width: 46px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.okr-status-dot {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 99px;
+  flex-shrink: 0;
+}
+
+.okr-ota-badge {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 99px;
+  flex-shrink: 0;
+}
+
+.okr-ota-ref {
+  font-size: 10px;
+  color: var(--text-3);
+  padding: 2px 6px;
+  border-radius: 99px;
+  background: var(--bg);
+}
+
+.okr-hint {
+  margin-top: 24px;
+  font-size: 13px;
+  color: var(--text-3);
+  text-align: center;
+}

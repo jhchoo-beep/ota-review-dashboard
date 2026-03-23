@@ -492,6 +492,272 @@ function HistoryTable({ reviews, platform, onDelete }) {
   );
 }
 
+
+// -- OKR Dashboard (메인 웰컴 페이지)
+function OKRDashboard({ properties }) {
+  const [allReviews, setAllReviews] = useState({});
+  const [superhostMap, setSuperhostMap] = useState({});
+  const [loading, setLoading] = useState(true);
+
+  const FIXED_ORDER = ['맹그로브 신설', '맹그로브 동대문', '맹그로브 고성', '맹그로브 제주시티'];
+  const OTA_ORDER_LOCAL = {
+    '맹그로브 신설':    ['agoda','airbnb','booking','tripcom','expedia','nol','yeogieottae','metasearch'],
+    '맹그로브 동대문':  ['agoda','airbnb','booking','tripcom','expedia','nol','yeogieottae','metasearch'],
+    '맹그로브 고성':    ['agoda','airbnb','nol','metasearch'],
+    '맹그로브 제주시티':['agoda','airbnb','booking','tripcom','expedia','nol','yeogieottae','metasearch'],
+  };
+
+  // 목표 점수
+  const getTarget = (platform) => ['airbnb','nol'].includes(platform) ? 4.5 : 9.0;
+  const getMax = (platform) => ['airbnb','nol'].includes(platform) ? 5 : 10;
+
+  useEffect(() => {
+    if (!properties.length) return;
+    (async () => {
+      const reviewMap = {};
+      const shMap = {};
+      for (const p of properties) {
+        const r = await fetch(`/api/reviews?property_id=${p.id}`).then(x => x.json());
+        reviewMap[p.id] = r[0];
+        if (p.platform === 'airbnb') {
+          const sh = await fetch(`/api/superhost?property_id=${p.id}`).then(x => x.json());
+          shMap[p.id] = Array.isArray(sh) ? sh[0] : null;
+        }
+      }
+      setAllReviews(reviewMap);
+      setSuperhostMap(shMap);
+      setLoading(false);
+    })();
+  }, [properties]);
+
+  // 지점별 그룹화
+  const grouped = {};
+  properties.forEach(p => {
+    if (!grouped[p.name]) grouped[p.name] = [];
+    grouped[p.name].push(p);
+  });
+
+  // OKR 전체 달성률 계산
+  const calcProgress = () => {
+    let total = 0, achieved = 0;
+    Object.entries(grouped).forEach(([name, items]) => {
+      items.forEach(p => {
+        if (p.platform === 'metasearch') return;
+        total++;
+        const rev = allReviews[p.id];
+        if (!rev) return;
+        if (p.platform === 'airbnb') {
+          const sh = superhostMap[p.id];
+          if (sh?.achieved) achieved++;
+        } else {
+          const score = parseFloat(rev.overall_score);
+          if (score >= getTarget(p.platform)) achieved++;
+        }
+      });
+    });
+    return total > 0 ? Math.round((achieved / total) * 100) : 0;
+  };
+
+  const progress = loading ? 0 : calcProgress();
+
+  const getScoreStatus = (platform, rev) => {
+    if (platform === 'metasearch') {
+      const g = parseFloat(rev?.google_score);
+      const k = parseFloat(rev?.kakao_score);
+      const gOk = !isNaN(g) && g >= 4.5;
+      const kOk = !isNaN(k) && k >= 4.5;
+      if (!rev) return 'none';
+      if (gOk && kOk) return 'achieved';
+      if (g >= 4.0 || k >= 4.0) return 'progress';
+      return 'behind';
+    }
+    const score = parseFloat(rev?.overall_score);
+    if (isNaN(score)) return 'none';
+    const target = getTarget(platform);
+    if (score >= target) return 'achieved';
+    if (score >= target - 0.5) return 'progress';
+    return 'behind';
+  };
+
+  const STATUS_COLOR = { achieved: '#0F6E56', progress: '#BA7517', behind: '#A32D2D', none: '#888780' };
+  const STATUS_BG = { achieved: '#E1F5EE', progress: '#FAEEDA', behind: '#FCEBEB', none: '#F1EFE8' };
+  const STATUS_LABEL = { achieved: '달성', progress: '진행 중', behind: '미달', none: '미입력' };
+
+  const fmtScore = (v) => v != null ? Number(v).toFixed(1) : '—';
+
+  return (
+    <div className="okr-page">
+      {/* 헤더 */}
+      <div className="okr-header">
+        <div>
+          <div className="okr-tag">2026 상반기 OKR</div>
+          <h1 className="okr-title">OTA 리뷰 앞자리를 9로</h1>
+          <p className="okr-subtitle">즉시 실행 가능한 아이템을 도출·실행하여 상반기까지 모든 OTA 리뷰 앞자리를 9로 만든다</p>
+        </div>
+        {!loading && (
+          <div className="okr-progress-wrap">
+            <div className="okr-progress-label">전체 달성률</div>
+            <div className="okr-progress-circle">
+              <svg viewBox="0 0 80 80" width="80" height="80">
+                <circle cx="40" cy="40" r="34" fill="none" stroke="var(--border)" strokeWidth="7"/>
+                <circle cx="40" cy="40" r="34" fill="none"
+                  stroke={progress >= 80 ? '#0F6E56' : progress >= 50 ? '#BA7517' : '#E24B4A'}
+                  strokeWidth="7"
+                  strokeLinecap="round"
+                  strokeDasharray={`${2 * Math.PI * 34}`}
+                  strokeDashoffset={`${2 * Math.PI * 34 * (1 - progress / 100)}`}
+                  transform="rotate(-90 40 40)"
+                />
+              </svg>
+              <span className="okr-progress-pct">{progress}%</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 범례 */}
+      <div className="okr-legend">
+        {Object.entries(STATUS_LABEL).map(([k, v]) => (
+          <span key={k} className="okr-legend-item">
+            <span className="okr-legend-dot" style={{ background: STATUS_COLOR[k] }} />
+            {v}
+          </span>
+        ))}
+        <span className="okr-legend-item">
+          <span className="okr-legend-dot" style={{ background: '#6366f1' }} />
+          슈퍼호스트 (Airbnb)
+        </span>
+      </div>
+
+      {/* 목표 기준 안내 */}
+      <div className="okr-targets">
+        <span className="okr-target-chip">10점 만점 OTA 목표: <strong>9.0</strong></span>
+        <span className="okr-target-chip">5점 만점 OTA 목표: <strong>4.5</strong></span>
+        <span className="okr-target-chip">Airbnb 목표: <strong>슈퍼호스트 달성</strong></span>
+        <span className="okr-target-chip">기한: <strong>2026년 6월 30일</strong></span>
+      </div>
+
+      {/* 지점별 카드 */}
+      {loading ? (
+        <div className="okr-loading">데이터 불러오는 중...</div>
+      ) : (
+        <div className="okr-grid">
+          {FIXED_ORDER.filter(name => grouped[name]).map(name => {
+            const items = grouped[name];
+            const order = OTA_ORDER_LOCAL[name] || [];
+            const sorted = [...items].sort((a, b) => {
+              const ai = order.indexOf(a.platform), bi = order.indexOf(b.platform);
+              return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+            });
+
+            // 지점 달성률
+            const propTotal = sorted.filter(p => p.platform !== 'metasearch').length;
+            const propAchieved = sorted.filter(p => {
+              if (p.platform === 'metasearch') return false;
+              const rev = allReviews[p.id];
+              if (!rev) return false;
+              if (p.platform === 'airbnb') return superhostMap[p.id]?.achieved;
+              return parseFloat(rev.overall_score) >= getTarget(p.platform);
+            }).length;
+
+            return (
+              <div key={name} className="okr-card">
+                <div className="okr-card-header">
+                  <span className="okr-card-name">{name}</span>
+                  <span className="okr-card-ratio">{propAchieved}/{propTotal}</span>
+                </div>
+                <div className="okr-card-bar-wrap">
+                  <div className="okr-card-bar">
+                    <div className="okr-card-bar-fill"
+                      style={{ width: `${propTotal > 0 ? (propAchieved / propTotal) * 100 : 0}%`,
+                        background: propAchieved === propTotal ? '#0F6E56' : propAchieved >= propTotal * 0.7 ? '#BA7517' : '#E24B4A' }} />
+                  </div>
+                </div>
+
+                <div className="okr-ota-list">
+                  {sorted.map(p => {
+                    const rev = allReviews[p.id];
+                    const accent = PLATFORM_COLOR[p.platform];
+
+                    // Airbnb: 슈퍼호스트
+                    if (p.platform === 'airbnb') {
+                      const sh = superhostMap[p.id];
+                      const shStatus = sh ? (sh.achieved ? 'achieved' : 'behind') : 'none';
+                      return (
+                        <div key={p.id} className="okr-ota-row">
+                          <span className="okr-ota-dot" style={{ background: accent }} />
+                          <span className="okr-ota-name">{PLATFORM_LABEL[p.platform]}</span>
+                          <span className="okr-ota-score" style={{ color: accent }}>
+                            {rev ? `${fmtScore(rev.overall_score)}/5` : '—'}
+                          </span>
+                          <span className="okr-ota-badge" style={{
+                            background: '#6366f111', color: sh ? (sh.achieved ? '#0F6E56' : '#A32D2D') : '#888780',
+                            border: `1px solid ${sh ? (sh.achieved ? '#9FE1CB' : '#F7C1C1') : '#D3D1C7'}`
+                          }}>
+                            {sh ? (sh.achieved ? '슈퍼호스트 ✓' : '슈퍼호스트 ✕') : '미입력'}
+                          </span>
+                        </div>
+                      );
+                    }
+
+                    // Meta-Search
+                    if (p.platform === 'metasearch') {
+                      const g = parseFloat(rev?.google_score);
+                      const k = parseFloat(rev?.kakao_score);
+                      return (
+                        <div key={p.id} className="okr-ota-row okr-ota-meta">
+                          <span className="okr-ota-dot" style={{ background: accent }} />
+                          <span className="okr-ota-name">Meta-Search</span>
+                          <span className="okr-ota-score" style={{ color: accent }}>
+                            G {isNaN(g) ? '—' : g.toFixed(1)} / K {isNaN(k) ? '—' : k.toFixed(1)}
+                          </span>
+                          <span className="okr-ota-ref">참고</span>
+                        </div>
+                      );
+                    }
+
+                    // 일반 OTA
+                    const score = parseFloat(rev?.overall_score);
+                    const target = getTarget(p.platform);
+                    const max = getMax(p.platform);
+                    const status = getScoreStatus(p.platform, rev);
+                    const pct = !isNaN(score) ? Math.min((score / max) * 100, 100) : 0;
+                    const targetPct = (target / max) * 100;
+
+                    return (
+                      <div key={p.id} className="okr-ota-row">
+                        <span className="okr-ota-dot" style={{ background: accent }} />
+                        <span className="okr-ota-name">{PLATFORM_LABEL[p.platform]}</span>
+                        <div className="okr-mini-bar-wrap">
+                          <div className="okr-mini-bar">
+                            <div className="okr-mini-bar-fill" style={{
+                              width: `${pct}%`,
+                              background: STATUS_COLOR[status]
+                            }} />
+                            <div className="okr-mini-bar-target" style={{ left: `${targetPct}%` }} />
+                          </div>
+                        </div>
+                        <span className="okr-ota-score" style={{ color: STATUS_COLOR[status] }}>
+                          {rev ? `${fmtScore(rev.overall_score)}/${max}` : '—'}
+                        </span>
+                        <span className="okr-status-dot" style={{ background: STATUS_BG[status], color: STATUS_COLOR[status] }}>
+                          {STATUS_LABEL[status]}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <p className="okr-hint">← 좌측에서 지점·OTA를 선택하면 상세 점수와 추이를 확인할 수 있습니다</p>
+    </div>
+  );
+}
+
 // -- Property Panel
 function PropertyPanel({ property }) {
   const [reviews, setReviews] = useState([]);
@@ -1042,27 +1308,7 @@ export default function Home() {
           {selected ? (
             <PropertyPanel key={selected.id} property={selected} />
           ) : (
-            <div className="welcome-page">
-              <div className="welcome-inner">
-                <div className="welcome-logo-wrap">
-                  <span className="welcome-logo-mark">OTA</span>
-                </div>
-                <h1 className="welcome-title">맹그로브 리뷰 대시보드</h1>
-                <p className="welcome-desc">각 지점의 OTA 리뷰 점수를 한눈에 확인하고 관리하세요</p>
-                <div className="welcome-divider" />
-                <p className="welcome-hint">
-                  <span className="welcome-arrow">←</span>
-                  좌측 목록에서 <strong>지점</strong>과 <strong>OTA 플랫폼</strong>을 선택하면 평점 현황과 추이를 확인할 수 있습니다
-                </p>
-                <div className="welcome-cards">
-                  {['Agoda', 'Airbnb', 'Booking.com', 'Trip.com', 'Expedia', 'NOL', '여기어때', 'Meta-Search'].map((ota, i) => (
-                    <span key={ota} className="welcome-ota-badge" style={{ background: Object.values(PLATFORM_COLOR)[i % Object.values(PLATFORM_COLOR).length] + '18', color: Object.values(PLATFORM_COLOR)[i % Object.values(PLATFORM_COLOR).length] }}>
-                      {ota}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
+            <OKRDashboard properties={properties} />
           )}
         </main>
       </div>

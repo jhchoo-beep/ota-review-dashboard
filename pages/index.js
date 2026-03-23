@@ -659,6 +659,38 @@ function PropertyPanel({ property }) {
                     {!isAirbnb && !isBooking && !isTripcom && !isExpedia && !isSimple && <StatCard label="가격 만족도" value={<>{fmtScore(latest.value_for_money)}{diffEl('value_for_money')}</>} />}
                     {/* Airbnb 전용 */}
 
+                    {/* Airbnb 슈퍼호스트 상태 배너 */}
+                    {isAirbnb && (() => {
+                      const sh = superhostRecords[0];
+                      const achieved = sh?.achieved;
+                      const hasRecord = !!sh;
+                      return (
+                        <div
+                          onClick={() => setTab('superhost')}
+                          className="sh-dashboard-banner"
+                          style={{
+                            background: hasRecord ? (achieved ? '#E1F5EE' : '#FCEBEB') : 'var(--bg)',
+                            border: `1px solid ${hasRecord ? (achieved ? '#9FE1CB' : '#F7C1C1') : 'var(--border)'}`,
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span className="sh-dashboard-dot" style={{ background: hasRecord ? (achieved ? '#0F6E56' : '#E24B4A') : 'var(--text-3)' }} />
+                            <span className="sh-dashboard-label" style={{ color: hasRecord ? (achieved ? '#085041' : '#791F1F') : 'var(--text-2)' }}>
+                              슈퍼호스트 {hasRecord ? (achieved ? '달성' : '미달성') : '기록 없음'}
+                            </span>
+                            {sh && (
+                              <span className="sh-dashboard-period" style={{ color: hasRecord ? (achieved ? '#0F6E56' : '#A32D2D') : 'var(--text-3)' }}>
+                                {sh.period_start?.slice(0,7).replace('-','.')} ~ {sh.period_end?.slice(0,7).replace('-','.')}
+                              </span>
+                            )}
+                          </div>
+                          <span className="sh-dashboard-arrow" style={{ color: hasRecord ? (achieved ? '#0F6E56' : '#A32D2D') : 'var(--text-3)' }}>
+                            상세 보기 →
+                          </span>
+                        </div>
+                      );
+                    })()}
+
                     {/* Booking.com 전용 */}
                     {isBooking && <StatCard label="직원 친절도" value={<>{fmtScore(latest.staff_friendliness)}{diffEl('staff_friendliness')}</>} />}
                     {isBooking && <StatCard label="시설" value={<>{fmtScore(latest.facilities)}{diffEl('facilities')}</>} />}

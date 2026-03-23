@@ -514,16 +514,25 @@ function OKRDashboard({ properties }) {
   useEffect(() => {
     if (!properties.length) return;
     (async () => {
-      const reviewMap = {};
+      // 최적화: 28번 순차 요청 → 병렬 2번 요청으로 단축
+      // /api/reviews/latest: DISTINCT ON SQL 1번으로 전체 최신 리뷰 반환
+      // /api/superhost: Airbnb 지점만 필터링해서 병렬 요청
+      const airbnbIds = properties.filter(p => p.platform === 'airbnb').map(p => p.id);
+
+      const [reviewMap, ...shResults] = await Promise.all([
+        fetch('/api/reviews/latest').then(x => x.json()),
+        ...airbnbIds.map(id =>
+          fetch(`/api/superhost?property_id=${id}`)
+            .then(x => x.json())
+            .then(data => ({ id, record: Array.isArray(data) ? data[0] : null }))
+        ),
+      ]);
+
       const shMap = {};
-      for (const p of properties) {
-        const r = await fetch(`/api/reviews?property_id=${p.id}`).then(x => x.json());
-        reviewMap[p.id] = r[0];
-        if (p.platform === 'airbnb') {
-          const sh = await fetch(`/api/superhost?property_id=${p.id}`).then(x => x.json());
-          shMap[p.id] = Array.isArray(sh) ? sh[0] : null;
-        }
+      for (const { id, record } of shResults) {
+        shMap[id] = record;
       }
+
       setAllReviews(reviewMap);
       setSuperhostMap(shMap);
       setLoading(false);

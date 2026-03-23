@@ -591,7 +591,7 @@ function OKRDashboard({ properties }) {
       <div className="okr-header">
         <div>
           <div className="okr-tag">2026 상반기 OKR</div>
-          <h1 className="okr-title">OTA 리뷰 앞자리를 9로</h1>
+          <h1 className="okr-title">OKR Tracker</h1>
           <p className="okr-subtitle">즉시 실행 가능한 아이템을 도출·실행하여 상반기까지 모든 OTA 리뷰 앞자리를 9로 만든다</p>
         </div>
         {!loading && (
@@ -634,7 +634,6 @@ function OKRDashboard({ properties }) {
         <span className="okr-target-chip">10점 만점 OTA 목표: <strong>9.0</strong></span>
         <span className="okr-target-chip">5점 만점 OTA 목표: <strong>4.5</strong></span>
         <span className="okr-target-chip">Airbnb 목표: <strong>슈퍼호스트 달성</strong></span>
-        <span className="okr-target-chip">기한: <strong>2026년 6월 30일</strong></span>
       </div>
 
       {/* 지점별 카드 */}
@@ -1168,6 +1167,7 @@ export default function Home() {
   const [newPlatform, setNewPlatform] = useState('agoda');
   const [addStatus, setAddStatus] = useState('idle');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showOKR, setShowOKR] = useState(false);
 
   // 고정 지점 목록
   const FIXED_PROPERTIES = ['맹그로브 신설', '맹그로브 동대문', '맹그로브 고성', '맹그로브 제주시티'];
@@ -1275,6 +1275,13 @@ export default function Home() {
               + 지점 & OTA 추가
             </button>
 
+            <button
+              className={`nav-okr-btn${showOKR ? ' active' : ''}`}
+              onClick={() => { setShowOKR(true); setSelected(null); setSidebarOpen(false); }}
+            >
+              <span className="nav-okr-icon">◎</span>
+              OKR Tracker
+            </button>
             <div className="nav-label-row">
               <span className="nav-label">지점 목록</span>
             </div>
@@ -1289,8 +1296,8 @@ export default function Home() {
                 {grp.items.map(p => (
                   <button
                     key={p.id}
-                    className={`nav-item ${selected?.id === p.id ? 'active' : ''} ${grp.items.length > 1 ? 'indented' : ''}`}
-                    onClick={() => { setSelected(p); setSidebarOpen(false); }}
+                    className={`nav-item ${selected?.id === p.id && !showOKR ? 'active' : ''} ${grp.items.length > 1 ? 'indented' : ''}`}
+                    onClick={() => { setSelected(p); setShowOKR(false); setSidebarOpen(false); }}
                   >
                     <span className="nav-dot" style={{ background: PLATFORM_COLOR[p.platform] }} />
                     <span className="nav-name">{grp.items.length > 1 ? PLATFORM_LABEL[p.platform] : p.name}</span>
@@ -1305,7 +1312,7 @@ export default function Home() {
 
         {/* Main content */}
         <main className={`main${!selected ? ' main-welcome' : ''}`}>
-          {selected ? (
+          {selected && !showOKR ? (
             <PropertyPanel key={selected.id} property={selected} />
           ) : (
             <OKRDashboard properties={properties} />

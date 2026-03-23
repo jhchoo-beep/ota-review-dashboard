@@ -495,7 +495,20 @@ function HistoryTable({ reviews, platform, onDelete }) {
 // -- Property Panel
 function PropertyPanel({ property }) {
   const [reviews, setReviews] = useState([]);
-  const [tab, setTab] = useState('dashboard'); // dashboard | input | history
+  const [tab, setTab] = useState('dashboard');
+  const [superhostRecords, setSuperhostRecords] = useState([]);
+  const [shForm, setShForm] = useState({
+    period_start: '', period_end: '', rating: '', response_rate: '', trips: '', cancel_rate: '', memo: ''
+  });
+  const [shStatus, setShStatus] = useState('idle');
+
+  const SUPERHOST_PERIODS = [
+    { start: '2025-04-01', end: '2026-03-31', label: '2025.04 ~ 2026.03' },
+    { start: '2025-01-01', end: '2025-12-31', label: '2025.01 ~ 2025.12' },
+    { start: '2024-10-01', end: '2025-09-30', label: '2024.10 ~ 2025.09' },
+    { start: '2024-07-01', end: '2025-06-30', label: '2024.07 ~ 2025.06' },
+    { start: '2024-04-01', end: '2025-03-31', label: '2024.04 ~ 2025.03' },
+  ];
 
   const load = async () => {
     const res = await fetch(`/api/reviews?property_id=${property.id}`);
@@ -503,7 +516,46 @@ function PropertyPanel({ property }) {
     setReviews(data);
   };
 
-  useEffect(() => { load(); }, [property.id]);
+  const loadSuperhost = async () => {
+    const res = await fetch(`/api/superhost?property_id=${property.id}`);
+    const data = await res.json();
+    setSuperhostRecords(Array.isArray(data) ? data : []);
+  };
+
+  useEffect(() => {
+    load();
+    if (property.platform === 'airbnb') loadSuperhost();
+  }, [property.id]);
+
+  const saveSuperhost = async (e) => {
+    e.preventDefault();
+    setShStatus('loading');
+    const res = await fetch('/api/superhost', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ property_id: property.id, ...shForm,
+        rating: shForm.rating || null,
+        response_rate: shForm.response_rate || null,
+        trips: shForm.trips || null,
+        cancel_rate: shForm.cancel_rate || null,
+      }),
+    });
+    if (res.ok) {
+      setShStatus('ok');
+      setShForm({ period_start: '', period_end: '', rating: '', response_rate: '', trips: '', cancel_rate: '', memo: '' });
+      loadSuperhost();
+      setTimeout(() => setShStatus('idle'), 2000);
+    } else {
+      setShStatus('error');
+      setTimeout(() => setShStatus('idle'), 2000);
+    }
+  };
+
+  const deleteSuperhost = async (id) => {
+    if (!confirm('이 기록을 삭제할까요?')) return;
+    await fetch(`/api/superhost?id=${id}`, { method: 'DELETE' });
+    loadSuperhost();
+  };
 
   const handleDelete = async (id) => {
     if (!confirm('이 기록을 삭제할까요?')) return;
@@ -547,9 +599,9 @@ function PropertyPanel({ property }) {
         </div>
         <div className="panel-header-right">
           <div className="panel-tabs">
-            {['dashboard', 'history'].map(t => (
+            {(isAirbnb ? ['dashboard', 'superhost', 'history'] : ['dashboard', 'history']).map(t => (
               <button key={t} className={`tab-btn ${tab === t ? 'active' : ''}`} style={tab === t ? { borderBottomColor: accent, color: accent } : {}} onClick={() => setTab(t)}>
-                {{ dashboard: '대시보드', history: '기록' }[t]}
+                {{ dashboard: '대시보드', superhost: '슈퍼호스트', history: '기록' }[t]}
               </button>
             ))}
           </div>
@@ -568,6 +620,16 @@ function PropertyPanel({ property }) {
               style={{ background: accent, color: '#fff', borderColor: accent, marginLeft: '8px' }}
             >
               점수 저장
+            </button>
+          )}
+          {tab === 'superhost' && isAirbnb && (
+            <button
+              type="submit"
+              form="sh-form"
+              className="btn-input"
+              style={{ background: accent, color: '#fff', borderColor: accent, marginLeft: '8px' }}
+            >
+              기록 저장
             </button>
           )}        </div>
       </div>
@@ -596,7 +658,7 @@ function PropertyPanel({ property }) {
                     {!isAirbnb && !isBooking && !isTripcom && !isExpedia && !isSimple && <StatCard label="서비스" value={<>{fmtScore(latest.service)}{diffEl('service')}</>} />}
                     {!isAirbnb && !isBooking && !isTripcom && !isExpedia && !isSimple && <StatCard label="가격 만족도" value={<>{fmtScore(latest.value_for_money)}{diffEl('value_for_money')}</>} />}
                     {/* Airbnb 전용 */}
-                    {isAirbnb && <StatCard label="응답률" value={latest.response_rate != null ? `${latest.response_rate}%` : '—'} />}
+
                     {/* Booking.com 전용 */}
                     {isBooking && <StatCard label="직원 친절도" value={<>{fmtScore(latest.staff_friendliness)}{diffEl('staff_friendliness')}</>} />}
                     {isBooking && <StatCard label="시설" value={<>{fmtScore(latest.facilities)}{diffEl('facilities')}</>} />}
@@ -644,6 +706,146 @@ function PropertyPanel({ property }) {
         <div className="panel-body">
           <h3 className="section-title">새 점수 입력</h3>
           <ReviewForm key={`${property.id}-${tab}`} property={property} onSaved={() => { load(); setTab('dashboard'); }} />
+        </div>
+      )}
+
+      {/* 슈퍼호스트 탭 - Airbnb 전용 */}
+      {tab === 'superhost' && isAirbnb && (
+        <div className="panel-body">
+          {/* 현재 상태 */}
+          {(() => {
+            const latest = superhostRecords[0];
+            const isAchieved = latest?.achieved;
+            return (
+              <div className="sh-status-bar" style={{ background: isAchieved ? '#E1F5EE' : '#FCEBEB', border: `0.5px solid ${isAchieved ? '#9FE1CB' : '#F7C1C1'}` }}>
+                <span className="sh-status-dot" style={{ background: isAchieved ? '#0F6E56' : '#E24B4A' }} />
+                <span className="sh-status-text" style={{ color: isAchieved ? '#085041' : '#791F1F' }}>
+                  {latest ? (isAchieved ? '슈퍼호스트 유지 중' : '슈퍼호스트 미달성') : '기록 없음'}
+                </span>
+                {latest && (
+                  <span className="sh-status-period">{latest.period_start?.slice(0,7).replace('-','.')} ~ {latest.period_end?.slice(0,7).replace('-','.')}</span>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* 슈퍼호스트 기록 입력 폼 */}
+          <div className="sh-section">
+            <h3 className="section-title">기록 입력</h3>
+            <form id="sh-form" onSubmit={saveSuperhost} className="review-form">
+              <div className="form-row">
+                <div className="form-field">
+                  <label>평가 기간 선택</label>
+                  <select value={shForm.period_start + '|' + shForm.period_end}
+                    onChange={e => {
+                      const [s, en] = e.target.value.split('|');
+                      setShForm(f => ({ ...f, period_start: s, period_end: en }));
+                    }} required>
+                    <option value="|">-- 기간 선택 --</option>
+                    {SUPERHOST_PERIODS.map(p => (
+                      <option key={p.start} value={p.start + '|' + p.end}>{p.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="form-row">
+                <div className="form-field">
+                  <label>평점</label>
+                  <input type="number" placeholder="예: 4.92" step="0.01" min="0" max="5" value={shForm.rating} onChange={e => setShForm(f => ({ ...f, rating: e.target.value }))} />
+                </div>
+                <div className="form-field">
+                  <label>응답률 (%)</label>
+                  <input type="number" placeholder="예: 98" step="1" min="0" max="100" value={shForm.response_rate} onChange={e => setShForm(f => ({ ...f, response_rate: e.target.value }))} />
+                </div>
+                <div className="form-field">
+                  <label>호스팅 횟수</label>
+                  <input type="number" placeholder="예: 42" step="1" min="0" value={shForm.trips} onChange={e => setShForm(f => ({ ...f, trips: e.target.value }))} />
+                </div>
+                <div className="form-field">
+                  <label>취소율 (%)</label>
+                  <input type="number" placeholder="예: 0.0" step="0.1" min="0" max="100" value={shForm.cancel_rate} onChange={e => setShForm(f => ({ ...f, cancel_rate: e.target.value }))} />
+                </div>
+              </div>
+              {shStatus === 'ok' && <p className="form-status ok" style={{marginTop:'8px'}}>✓ 저장되었습니다</p>}
+              {shStatus === 'error' && <p className="form-status error" style={{marginTop:'8px'}}>✕ 저장 실패</p>}
+            </form>
+          </div>
+
+          {/* 달성 조건 현황 - 최신 기록 기반 */}
+          {superhostRecords[0] && (() => {
+            const r = superhostRecords[0];
+            const criteria = [
+              { name: '평점', value: r.rating ? `${Number(r.rating).toFixed(2)}점` : '—', pass: r.rating >= 4.8, target: '4.8 이상' },
+              { name: '응답률', value: r.response_rate ? `${r.response_rate}%` : '—', pass: r.response_rate >= 90, target: '90% 이상' },
+              { name: '호스팅 횟수', value: r.trips ? `${r.trips}회` : '—', pass: r.trips >= 10, target: '10회 이상' },
+              { name: '예약 취소율', value: r.cancel_rate != null ? `${r.cancel_rate}%` : '—', pass: r.cancel_rate < 1.0, target: '1.0% 미만' },
+            ];
+            return (
+              <div className="sh-section">
+                <h3 className="section-title">달성 조건 현황 <span style={{fontWeight:400, color:'var(--text-2)', fontSize:'12px'}}>({r.period_start?.slice(0,7).replace('-','.')} ~ {r.period_end?.slice(0,7).replace('-','.')})</span></h3>
+                <div className="sh-criteria-list">
+                  {criteria.map(c => (
+                    <div key={c.name} className="sh-criteria-row">
+                      <span className={`sh-criteria-icon ${c.value !== '—' ? (c.pass ? 'pass' : 'fail') : 'neutral'}`}>{c.value !== '—' ? (c.pass ? '✓' : '✕') : '–'}</span>
+                      <span className="sh-criteria-name">{c.name}</span>
+                      <span className="sh-criteria-value">{c.value}</span>
+                      <span className="sh-criteria-target">기준 {c.target}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* 기간별 이력 */}
+          <div className="sh-section">
+            <h3 className="section-title">평가 기간별 이력</h3>
+            {superhostRecords.length === 0 ? (
+              <p className="empty-msg">아직 기록이 없습니다</p>
+            ) : (
+              <div className="table-wrap">
+                <table className="history-table">
+                  <thead>
+                    <tr>
+                      <th>평가 기간</th>
+                      <th>평점</th>
+                      <th>응답률</th>
+                      <th>호스팅</th>
+                      <th>취소율</th>
+                      <th>결과</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {superhostRecords.map(r => (
+                      <tr key={r.id}>
+                        <td>{r.period_start?.slice(0,7).replace('-','.')} ~ {r.period_end?.slice(0,7).replace('-','.')}</td>
+                        <td>{r.rating ? Number(r.rating).toFixed(2) : '—'}</td>
+                        <td>{r.response_rate != null ? `${r.response_rate}%` : '—'}</td>
+                        <td>{r.trips != null ? `${r.trips}회` : '—'}</td>
+                        <td>{r.cancel_rate != null ? `${r.cancel_rate}%` : '—'}</td>
+                        <td>
+                          <span className={r.achieved ? 'sh-badge-pass' : 'sh-badge-fail'}>
+                            {r.achieved ? '달성' : '미달성'}
+                          </span>
+                        </td>
+                        <td>
+                          <button className="delete-btn" onClick={() => deleteSuperhost(r.id)}>×</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 점수 저장 버튼 - 슈퍼호스트 탭일 때 */}
+      {tab === 'superhost' && isAirbnb && (
+        <div style={{ display: 'none' }}>
+          <button type="submit" form="sh-form" id="sh-submit-hidden" />
         </div>
       )}
 

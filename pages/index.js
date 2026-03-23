@@ -668,6 +668,9 @@ export default function Home() {
   const [newPlatform, setNewPlatform] = useState('agoda');
   const [addStatus, setAddStatus] = useState('idle');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [collecting, setCollecting] = useState(false);
+  const [collectLog, setCollectLog] = useState([]);
+  const [showCollectModal, setShowCollectModal] = useState(false);
 
   // 고정 지점 목록
   const FIXED_PROPERTIES = ['맹그로브 신설', '맹그로브 동대문', '맹그로브 고성', '맹그로브 제주시티'];
@@ -709,6 +712,161 @@ export default function Home() {
       .then(r => r.json())
       .then(data => { setProperties(data); });
   }, []);
+
+
+  // -- OTA 자동 수집 함수
+  const runAutoCollect = async () => {
+    setCollecting(true);
+    setCollectLog([]);
+    setShowCollectModal(true);
+
+    const today = new Date().toISOString().slice(0, 10);
+    const log = (msg) => setCollectLog(prev => [...prev, msg]);
+
+    const PID = {
+      sinseol:    { agoda:1,  airbnb:9,  booking:15, tripcom:19, expedia:20, nol:22, yeogi:21, meta:23 },
+      dongdaemun: { agoda:10, airbnb:2,  booking:16, tripcom:26, expedia:24, nol:25, yeogi:27, meta:28 },
+      goseong:    { agoda:11, airbnb:13, nol:18, meta:17 },
+      jeju:       { agoda:12, airbnb:14, booking:29, tripcom:33, expedia:30, nol:32, yeogi:34, meta:31 },
+    };
+
+    const fetchText = (url, waitMs = 4000) => new Promise((resolve) => {
+      const iframe = document.createElement('iframe');
+      iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1280px;height:900px;visibility:hidden;';
+      document.body.appendChild(iframe);
+      iframe.src = url;
+      setTimeout(() => {
+        try { iframe.contentWindow.scrollTo(0, 99999); } catch(e) {}
+        setTimeout(() => {
+          try {
+            const text = iframe.contentDocument?.body?.innerText || '';
+            document.body.removeChild(iframe);
+            resolve(text);
+          } catch(e) {
+            try { document.body.removeChild(iframe); } catch(e2) {}
+            resolve('');
+          }
+        }, 2500);
+      }, waitMs);
+    });
+
+    const saveReview = async (data) => {
+      const res = await fetch('/api/reviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...data, recorded_at: today }),
+      });
+      return res.ok;
+    };
+
+    const n = (v) => v ? parseFloat(v) : null;
+    const ni = (v) => v ? parseInt(v) : null;
+
+    const tasks = [
+      // 맹그로브 신설
+      { label:'신설 Agoda', pid: PID.sinseol.agoda, url:'https://www.agoda.com/ko-kr/mangrove-sinseol/reviews/seoul-kr.html?cid=1844104', wait:5000,
+        parse: t => ({ overall_score:n(t.match(/(\d+\.\d+)\s*\/10/)?.[1]), review_count:ni(t.match(/이용후기\s*([\d,]+)\s*건/)?.[1]?.replace(',','')), cleanliness:n(t.match(/숙소 청결 상태[\s\S]{0,30}?(\d+\.\d+)/)?.[1]), facilities:n(t.match(/부대시설[\s\S]{0,30}?(\d+\.\d+)/)?.[1]), location:n(t.match(/위치[\s\S]{0,20}?(\d+\.\d+)/)?.[1]), service:n(t.match(/서비스[\s\S]{0,20}?(\d+\.\d+)/)?.[1]), value_for_money:n(t.match(/가격 대비 만족도[\s\S]{0,20}?(\d+\.\d+)/)?.[1]) }) },
+      { label:'신설 Airbnb', pid: PID.sinseol.airbnb, url:'https://www.airbnb.co.kr/users/profile/1469836304845429160', wait:5000,
+        parse: t => ({ overall_score:n(t.match(/평점\s*(\d+\.\d+)/)?.[1]), review_count:ni(t.match(/후기\s*([\d,]+)\s*개/)?.[1]?.replace(',','')) }) },
+      { label:'신설 Booking', pid: PID.sinseol.booking, url:'https://www.booking.com/reviews/kr/hotel/maenggeurobeu-sinseol.ko.html', wait:5000,
+        parse: t => ({ overall_score:n(t.match(/(\d+\.\d+)\n점수 분석/)?.[1]), review_count:ni(t.match(/호텔 후기\s*([\d,]+)\s*개/)?.[1]?.replace(',','')), staff_friendliness:n(t.match(/직원 친절도[\s\S]{0,10}?(\d+\.\d+)/)?.[1]), facilities:n(t.match(/시설[\s\S]{0,10}?(\d+\.\d+)/)?.[1]), cleanliness:n(t.match(/청결도[\s\S]{0,10}?(\d+\.\d+)/)?.[1]), comfort:n(t.match(/편안함[\s\S]{0,10}?(\d+\.\d+)/)?.[1]), value_for_money:n(t.match(/가성비[\s\S]{0,10}?(\d+\.\d+)/)?.[1]), location:n(t.match(/위치[\s\S]{0,10}?(\d+\.\d+)/)?.[1]), free_wifi:n(t.match(/무료 Wi-Fi[\s\S]{0,10}?(\d+\.\d+)/)?.[1]) }) },
+      { label:'신설 Trip.com', pid: PID.sinseol.tripcom, url:'https://kr.trip.com/hotels/seoul-hotel-detail-99282499/mangrove-sinseol/review.html', wait:5000,
+        parse: t => ({ overall_score:n(t.match(/(\d+\.\d+)\/10/)?.[1]), review_count:ni(t.match(/리뷰\s*([\d,]+)\s*개/)?.[1]?.replace(',','')), location:n(t.match(/위치[\s\S]{0,20}?(\d+\.\d+)/)?.[1]), service:n(t.match(/서비스[\s\S]{0,20}?(\d+\.\d+)/)?.[1]), facilities:n(t.match(/시설[\s\S]{0,20}?(\d+\.\d+)/)?.[1]), cleanliness:n(t.match(/청결도[\s\S]{0,20}?(\d+\.\d+)/)?.[1]) }) },
+      { label:'신설 Expedia', pid: PID.sinseol.expedia, url:'https://www.expedia.co.kr/Seoul-Hotels-Mangrove-Sinseol.h91634856.Hotel-Information', wait:7000,
+        parse: t => { const s = t.match(/이용 후기[\s\S]{0,800}/)?.[0]||''; return { overall_score:n(s.match(/(\d+\.\d+)\s*\n매우 훌륭해요/)?.[1]||s.match(/(\d+\.\d+)\s*\n훌륭해요/)?.[1]), review_count:ni(s.match(/이용 후기\s*(\d+)\s*개/)?.[1]), cleanliness:n(s.match(/청결 상태\s*(\d+\.\d+)/)?.[1]), amenities:n(s.match(/편의 시설\/서비스\s*(\d+\.\d+)/)?.[1]), staff_service:n(s.match(/직원 및 서비스\s*(\d+\.\d+)/)?.[1]), property_condition:n(s.match(/숙박 시설 상태 및 시설\s*(\d+\.\d+)/)?.[1]) }; } },
+      { label:'신설 NOL', pid: PID.sinseol.nol, url:'https://nol.yanolja.com/reviews/domestic/10046095', wait:4000,
+        parse: t => ({ overall_score:n(t.match(/(\d+\.\d+)/)?.[1]), review_count:ni(t.match(/후기\s*\((\d+)\)/)?.[1]) }) },
+      { label:'신설 여기어때', pid: PID.sinseol.yeogi, url:'https://www.yeogi.com/domestic-accommodations/79468', wait:5000,
+        parse: t => ({ overall_score:n(t.match(/(\d+\.\d+)\s*\n*\d*명 평가/)?.[1]), review_count:ni(t.match(/(\d+)\s*명 평가/)?.[1]) }) },
+      { label:'신설 Meta-Search', pid: PID.sinseol.meta, url:'https://maps.app.goo.gl/8vvoVP8RDbLva6W77', wait:5000, kakaoUrl:'https://place.map.kakao.com/1898751520',
+        parse: t => { const m=t.match(/(\d+\.\d+)\s*\((\d+(?:,\d+)?)\)/); return { google_score:n(m?.[1]), google_count:ni(m?.[2]?.replace(',','')) }; },
+        parseKakao: t => ({ kakao_score:n(t.match(/(\d+\.\d+)\s*후기/)?.[1]), kakao_count:ni(t.match(/후기\s*(\d+)/)?.[1]) }) },
+
+      // 맹그로브 동대문
+      { label:'동대문 Agoda', pid: PID.dongdaemun.agoda, url:'https://www.agoda.com/ko-kr/mangrove-dongdaemun/reviews/seoul-kr.html?cid=1844104', wait:5000,
+        parse: t => ({ overall_score:n(t.match(/(\d+\.\d+)\s*\/10/)?.[1]), review_count:ni(t.match(/이용후기\s*([\d,]+)\s*건/)?.[1]?.replace(',','')), cleanliness:n(t.match(/숙소 청결 상태[\s\S]{0,30}?(\d+\.\d+)/)?.[1]), facilities:n(t.match(/부대시설[\s\S]{0,30}?(\d+\.\d+)/)?.[1]), location:n(t.match(/위치[\s\S]{0,20}?(\d+\.\d+)/)?.[1]), service:n(t.match(/서비스[\s\S]{0,20}?(\d+\.\d+)/)?.[1]), value_for_money:n(t.match(/가격 대비 만족도[\s\S]{0,20}?(\d+\.\d+)/)?.[1]) }) },
+      { label:'동대문 Airbnb', pid: PID.dongdaemun.airbnb, url:'https://www.airbnb.co.kr/users/profile/1470147606120825927', wait:5000,
+        parse: t => ({ overall_score:n(t.match(/평점\s*(\d+\.\d+)/)?.[1]), review_count:ni(t.match(/후기\s*([\d,]+)\s*개/)?.[1]?.replace(',','')) }) },
+      { label:'동대문 Booking', pid: PID.dongdaemun.booking, url:'https://www.booking.com/reviews/kr/hotel/maenggeurobeu-dongdaemun-junggu.ko.html', wait:5000,
+        parse: t => ({ overall_score:n(t.match(/(\d+\.\d+)\n점수 분석/)?.[1]), review_count:ni(t.match(/호텔 후기\s*([\d,]+)\s*개/)?.[1]?.replace(',','')), staff_friendliness:n(t.match(/직원 친절도[\s\S]{0,10}?(\d+\.\d+)/)?.[1]), facilities:n(t.match(/시설[\s\S]{0,10}?(\d+\.\d+)/)?.[1]), cleanliness:n(t.match(/청결도[\s\S]{0,10}?(\d+\.\d+)/)?.[1]), comfort:n(t.match(/편안함[\s\S]{0,10}?(\d+\.\d+)/)?.[1]), value_for_money:n(t.match(/가성비[\s\S]{0,10}?(\d+\.\d+)/)?.[1]), location:n(t.match(/위치[\s\S]{0,10}?(\d+\.\d+)/)?.[1]), free_wifi:n(t.match(/무료 Wi-Fi[\s\S]{0,10}?(\d+\.\d+)/)?.[1]) }) },
+      { label:'동대문 Trip.com', pid: PID.dongdaemun.tripcom, url:'https://kr.trip.com/hotels/seoul-hotel-detail-106072133/mangrove-dongdaemun/review.html', wait:5000,
+        parse: t => ({ overall_score:n(t.match(/(\d+\.\d+)\/10/)?.[1]), review_count:ni(t.match(/리뷰\s*([\d,]+)\s*개/)?.[1]?.replace(',','')), location:n(t.match(/위치[\s\S]{0,20}?(\d+\.\d+)/)?.[1]), service:n(t.match(/서비스[\s\S]{0,20}?(\d+\.\d+)/)?.[1]), facilities:n(t.match(/시설[\s\S]{0,20}?(\d+\.\d+)/)?.[1]), cleanliness:n(t.match(/청결도[\s\S]{0,20}?(\d+\.\d+)/)?.[1]) }) },
+      { label:'동대문 Expedia', pid: PID.dongdaemun.expedia, url:'https://www.expedia.co.kr/Seoul-Hotels-Mangrove-Dongdaemun.h91409615.Hotel-Information', wait:7000,
+        parse: t => { const s = t.match(/이용 후기[\s\S]{0,800}/)?.[0]||''; return { overall_score:n(s.match(/(\d+\.\d+)\s*\n매우 훌륭해요/)?.[1]||s.match(/(\d+\.\d+)\s*\n훌륭해요/)?.[1]), review_count:ni(s.match(/이용 후기\s*(\d+)\s*개/)?.[1]), cleanliness:n(s.match(/청결 상태\s*(\d+\.\d+)/)?.[1]), amenities:n(s.match(/편의 시설\/서비스\s*(\d+\.\d+)/)?.[1]), staff_service:n(s.match(/직원 및 서비스\s*(\d+\.\d+)/)?.[1]), property_condition:n(s.match(/숙박 시설 상태 및 시설\s*(\d+\.\d+)/)?.[1]) }; } },
+      { label:'동대문 NOL', pid: PID.dongdaemun.nol, url:'https://nol.yanolja.com/reviews/domestic/10046490', wait:4000,
+        parse: t => ({ overall_score:n(t.match(/(\d+\.\d+)/)?.[1]), review_count:ni(t.match(/후기\s*\((\d+)\)/)?.[1]) }) },
+      { label:'동대문 여기어때', pid: PID.dongdaemun.yeogi, url:'https://www.yeogi.com/domestic-accommodations/79472', wait:5000,
+        parse: t => ({ overall_score:n(t.match(/(\d+\.\d+)\s*\n*\d*명 평가/)?.[1]), review_count:ni(t.match(/(\d+)\s*명 평가/)?.[1]) }) },
+      { label:'동대문 Meta-Search', pid: PID.dongdaemun.meta, url:'https://maps.app.goo.gl/R41tc1kfdosM4BZF6', wait:5000, kakaoUrl:'https://place.map.kakao.com/3241716',
+        parse: t => { const m=t.match(/(\d+\.\d+)\s*\((\d+(?:,\d+)?)\)/); return { google_score:n(m?.[1]), google_count:ni(m?.[2]?.replace(',','')) }; },
+        parseKakao: t => ({ kakao_score:n(t.match(/(\d+\.\d+)\s*후기/)?.[1]), kakao_count:ni(t.match(/후기\s*(\d+)/)?.[1]) }) },
+
+      // 맹그로브 고성
+      { label:'고성 Agoda', pid: PID.goseong.agoda, url:'https://www.agoda.com/sv-se/mangrove-goseong/reviews/sokcho-si-kr.html?cid=1844104', wait:5000,
+        parse: t => ({ overall_score:n(t.match(/(\d+\.\d+)\s*\/10/)?.[1]||t.match(/\b(8\.\d|9\.\d)\b/)?.[1]), review_count:ni(t.match(/(?:이용후기|omdömen)\s*([\d,]+)\s*(?:건|omdömen)/i)?.[1]?.replace(',','')||t.match(/Baserat på\s*([\d,]+)/i)?.[1]?.replace(',','')||t.match(/på\s*(\d+)\./i)?.[1]), cleanliness:n(t.match(/(?:숙소 청결 상태|Renlighet)[\s\S]{0,30}?(\d+\.\d+)/)?.[1]), facilities:n(t.match(/(?:부대시설|Faciliteter)[\s\S]{0,30}?(\d+\.\d+)/)?.[1]), location:n(t.match(/(?:Läge)[\s\S]{0,30}?(\d+\.\d+)/)?.[1]), service:n(t.match(/(?:^Service)[\s\S]{0,30}?(\d+\.\d+)/m)?.[1]), value_for_money:n(t.match(/(?:Valuta)[\s\S]{0,30}?(\d+\.\d+)/)?.[1]) }) },
+      { label:'고성 Airbnb', pid: PID.goseong.airbnb, url:'https://www.airbnb.co.kr/users/profile/1470343250544562684', wait:5000,
+        parse: t => ({ overall_score:n(t.match(/평점\s*(\d+\.\d+)/)?.[1]), review_count:ni(t.match(/후기\s*([\d,]+)\s*개/)?.[1]?.replace(',','')) }) },
+      { label:'고성 NOL', pid: PID.goseong.nol, url:'https://nol.yanolja.com/reviews/domestic/10052498', wait:4000,
+        parse: t => ({ overall_score:n(t.match(/(\d+\.\d+)/)?.[1]), review_count:ni(t.match(/후기\s*\((\d+)\)/)?.[1]) }) },
+      { label:'고성 Meta-Search', pid: PID.goseong.meta, url:'https://maps.app.goo.gl/6GnHDM9zhZFnwLVz5', wait:5000, kakaoUrl:'https://place.map.kakao.com/1160174468',
+        parse: t => { const m=t.match(/(\d+\.\d+)\s*\((\d+(?:,\d+)?)\)/); return { google_score:n(m?.[1]), google_count:ni(m?.[2]?.replace(',','')) }; },
+        parseKakao: t => ({ kakao_score:n(t.match(/(\d+\.\d+)\s*후기/)?.[1]), kakao_count:ni(t.match(/후기\s*(\d+)/)?.[1]) }) },
+
+      // 맹그로브 제주시티
+      { label:'제주 Agoda', pid: PID.jeju.agoda, url:'https://www.agoda.com/ko-kr/mangrove-jeju-city/reviews/jeju-kr.html?cid=1844104', wait:5000,
+        parse: t => ({ overall_score:n(t.match(/(\d+\.\d+)\s*\/10/)?.[1]), review_count:ni(t.match(/이용후기\s*([\d,]+)\s*건/)?.[1]?.replace(',','')), cleanliness:n(t.match(/숙소 청결 상태[\s\S]{0,30}?(\d+\.\d+)/)?.[1]), facilities:n(t.match(/부대시설[\s\S]{0,30}?(\d+\.\d+)/)?.[1]), location:n(t.match(/위치[\s\S]{0,20}?(\d+\.\d+)/)?.[1]), service:n(t.match(/서비스[\s\S]{0,20}?(\d+\.\d+)/)?.[1]), value_for_money:n(t.match(/가격 대비 만족도[\s\S]{0,20}?(\d+\.\d+)/)?.[1]) }) },
+      { label:'제주 Airbnb', pid: PID.jeju.airbnb, url:'https://www.airbnb.co.kr/users/profile/1470666430729386269', wait:5000,
+        parse: t => ({ overall_score:n(t.match(/평점\s*(\d+\.\d+)/)?.[1]), review_count:ni(t.match(/후기\s*([\d,]+)\s*개/)?.[1]?.replace(',','')) }) },
+      { label:'제주 Booking', pid: PID.jeju.booking, url:'https://www.booking.com/hotel/kr/maenggeurobeu-jejusiti.ko.html#tab-reviews', wait:5000,
+        parse: t => { const reviews=ni(t.match(/(\d+)개의 이용 후기/)?.[1]||t.match(/고객 후기 \((\d+)개\)/)?.[1]); return { overall_score:n(t.match(/(\d+\.\d+)\n점수 분석/)?.[1]||t.match(/평가 - [^\n]+\n(\d+\.\d+)/)?.[1]), review_count:reviews, staff_friendliness:n(t.match(/직원 친절도[\s\S]{0,10}?(\d+\.\d+)/)?.[1]), facilities:n(t.match(/시설[\s\S]{0,10}?(\d+\.\d+)/)?.[1]), cleanliness:n(t.match(/청결도[\s\S]{0,10}?(\d+\.\d+)/)?.[1]), comfort:n(t.match(/편안함[\s\S]{0,10}?(\d+\.\d+)/)?.[1]), value_for_money:n(t.match(/가성비[\s\S]{0,10}?(\d+\.\d+)/)?.[1]), location:n(t.match(/위치[\s\S]{0,10}?(\d+\.\d+)/)?.[1]), free_wifi:n(t.match(/무료 Wi-Fi[\s\S]{0,10}?(\d+\.\d+)/)?.[1]) }; } },
+      { label:'제주 Trip.com', pid: PID.jeju.tripcom, url:'https://kr.trip.com/hotels/jeju-hotel-detail-123274547/mangrove-jeju-city/review.html', wait:5000,
+        parse: t => ({ overall_score:n(t.match(/(\d+\.\d+)\/10/)?.[1]), review_count:ni(t.match(/리뷰\s*([\d,]+)\s*개/)?.[1]?.replace(',','')), location:n(t.match(/위치[\s\S]{0,20}?(\d+\.\d+)/)?.[1]), service:n(t.match(/서비스[\s\S]{0,20}?(\d+\.\d+)/)?.[1]), facilities:n(t.match(/시설[\s\S]{0,20}?(\d+\.\d+)/)?.[1]), cleanliness:n(t.match(/청결도[\s\S]{0,20}?(\d+\.\d+)/)?.[1]) }) },
+      { label:'제주 Expedia', pid: PID.jeju.expedia, url:'https://www.expedia.co.kr/Jeju-City-Hotels-Mangrove-Jeju-City.h108561990.Hotel-Information', wait:7000,
+        parse: t => { const s = t.match(/이용 후기[\s\S]{0,800}/)?.[0]||''; return { overall_score:n(s.match(/(\d+\.\d+)\s*\n매우 훌륭해요/)?.[1]||s.match(/(\d+\.\d+)\s*\n훌륭해요/)?.[1]), review_count:ni(s.match(/이용 후기\s*(\d+)\s*개/)?.[1]), cleanliness:n(s.match(/청결 상태\s*(\d+\.\d+)/)?.[1]), amenities:n(s.match(/편의 시설\/서비스\s*(\d+\.\d+)/)?.[1]), staff_service:n(s.match(/직원 및 서비스\s*(\d+\.\d+)/)?.[1]), property_condition:n(s.match(/숙박 시설 상태 및 시설\s*(\d+\.\d+)/)?.[1]) }; } },
+      { label:'제주 NOL', pid: PID.jeju.nol, url:'https://nol.yanolja.com/reviews/domestic/10059902', wait:4000,
+        parse: t => ({ overall_score:n(t.match(/(\d+\.\d+)/)?.[1]), review_count:ni(t.match(/후기\s*\((\d+)\)/)?.[1]) }) },
+      { label:'제주 여기어때', pid: PID.jeju.yeogi, url:'https://www.yeogi.com/domestic-accommodations/81655', wait:5000,
+        parse: t => ({ overall_score:n(t.match(/(\d+\.\d+)\s*\n*\d*명 평가/)?.[1]), review_count:ni(t.match(/(\d+)\s*명 평가/)?.[1]) }) },
+      { label:'제주 Meta-Search', pid: PID.jeju.meta, url:'https://maps.app.goo.gl/3gRb46AmhmExHeWb9', wait:5000, kakaoUrl:'https://place.map.kakao.com/865991287',
+        parse: t => { const m=t.match(/(\d+\.\d+)\s*\((\d+(?:,\d+)?)\)/); return { google_score:n(m?.[1]), google_count:ni(m?.[2]?.replace(',','')) }; },
+        parseKakao: t => ({ kakao_score:n(t.match(/(\d+\.\d+)\s*후기/)?.[1]), kakao_count:ni(t.match(/후기\s*(\d+)/)?.[1]) }) },
+    ];
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const task of tasks) {
+      log(`⏳ ${task.label} 수집 중...`);
+      try {
+        const text = await fetchText(task.url, task.wait);
+        let data = task.parse(text);
+
+        // Meta-Search: Kakao도 추가 수집
+        if (task.kakaoUrl && task.parseKakao) {
+          const kakaoText = await fetchText(task.kakaoUrl, 4000);
+          const kakaoData = task.parseKakao(kakaoText);
+          data = { ...data, ...kakaoData };
+        }
+
+        const ok = await saveReview({ property_id: task.pid, ...data });
+        if (ok) {
+          successCount++;
+          const score = data.overall_score || data.google_score || '-';
+          const cnt = data.review_count || data.google_count || '-';
+          log(`✅ ${task.label}: ${score}점 / ${cnt}건`);
+        } else {
+          failCount++;
+          log(`❌ ${task.label}: 저장 실패`);
+        }
+      } catch(e) {
+        failCount++;
+        log(`❌ ${task.label}: 오류 (${e.message})`);
+      }
+    }
+
+    log(`\n🎉 완료! 성공: ${successCount}개 / 실패: ${failCount}개`);
+    setCollecting(false);
+  };
 
   const addProperty = async (e) => {
     e.preventDefault();
@@ -773,6 +931,9 @@ export default function Home() {
             <button className="nav-add" onClick={() => { setShowAddModal(true); setSidebarOpen(false); }}>
               + 지점 & OTA 추가
             </button>
+            <button className="nav-collect" onClick={() => { runAutoCollect(); setSidebarOpen(false); }} disabled={collecting}>
+              {collecting ? '⏳ 수집 중...' : '🔄 자동 점수 수집'}
+            </button>
             <div className="nav-label-row">
               <span className="nav-label">지점 목록</span>
             </div>
@@ -830,6 +991,28 @@ export default function Home() {
           )}
         </main>
       </div>
+
+      {/* Auto Collect Modal */}
+      {showCollectModal && (
+        <div className="modal-bg" onClick={collecting ? null : () => setShowCollectModal(false)}>
+          <div className="modal collect-modal" onClick={e => e.stopPropagation()}>
+            <div className="collect-modal-header">
+              <h3 className="modal-title">🔄 OTA 자동 점수 수집</h3>
+              {!collecting && (
+                <button className="collect-close" onClick={() => setShowCollectModal(false)}>✕</button>
+              )}
+            </div>
+            <div className="collect-log">
+              {collectLog.map((line, i) => (
+                <div key={i} className={`collect-line ${line.startsWith('✅') ? 'ok' : line.startsWith('❌') ? 'err' : line.startsWith('🎉') ? 'done' : ''}`}>
+                  {line}
+                </div>
+              ))}
+              {collecting && <div className="collect-spinner">수집 중... 잠시 기다려주세요</div>}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add property modal */}
       {showAddModal && (

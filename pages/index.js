@@ -577,20 +577,18 @@ function OKRDashboard({ properties }) {
       const kOk = !isNaN(k) && k >= 4.5;
       if (!rev) return 'none';
       if (gOk && kOk) return 'achieved';
-      if (g >= 4.0 || k >= 4.0) return 'progress';
-      return 'behind';
+      return 'progress';
     }
     const score = parseFloat(rev?.overall_score);
     if (isNaN(score)) return 'none';
     const target = getTarget(platform);
     if (score >= target) return 'achieved';
-    if (score >= target - 0.5) return 'progress';
-    return 'behind';
+    return 'progress';
   };
 
-  const STATUS_COLOR = { achieved: '#0F6E56', progress: '#BA7517', behind: '#A32D2D', none: '#888780' };
-  const STATUS_BG = { achieved: '#E1F5EE', progress: '#FAEEDA', behind: '#FCEBEB', none: '#F1EFE8' };
-  const STATUS_LABEL = { achieved: '달성', progress: '진행 중', behind: '미달', none: '미입력' };
+  const STATUS_COLOR = { achieved: '#0F6E56', progress: '#BA7517', none: '#888780' };
+  const STATUS_BG = { achieved: '#E1F5EE', progress: '#FAEEDA', none: '#F1EFE8' };
+  const STATUS_LABEL = { achieved: '달성', progress: '진행 중', none: '미입력' };
 
   const fmtScore = (v) => v != null ? Number(v).toFixed(1) : '—';
 

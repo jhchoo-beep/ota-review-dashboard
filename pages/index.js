@@ -668,17 +668,29 @@ function OKRDashboard({ properties }) {
 
             return (
               <div key={name} className="okr-card">
-                <div className="okr-card-header">
-                  <span className="okr-card-name">{name}</span>
-                  <span className="okr-card-ratio">{propAchieved}/{propTotal}</span>
-                </div>
-                <div className="okr-card-bar-wrap">
-                  <div className="okr-card-bar">
-                    <div className="okr-card-bar-fill"
-                      style={{ width: `${propTotal > 0 ? (propAchieved / propTotal) * 100 : 0}%`,
-                        background: propAchieved === propTotal ? '#0F6E56' : propAchieved >= propTotal * 0.7 ? '#BA7517' : '#E24B4A' }} />
-                  </div>
-                </div>
+                {(() => {
+                  const allDone = propAchieved === propTotal;
+                  const ratioColor = allDone ? '#0F6E56' : '#E24B4A';
+                  const ratioBg = allDone ? '#E1F5EE' : '#FCEBEB';
+                  const barColor = allDone ? '#0F6E56' : '#E24B4A';
+                  const pct = propTotal > 0 ? (propAchieved / propTotal) * 100 : 0;
+                  return (
+                    <>
+                      <div className="okr-card-header">
+                        <span className="okr-card-name">{name}</span>
+                        <span className="okr-card-ratio-badge" style={{ background: ratioBg, color: ratioColor }}>
+                          {propAchieved}/{propTotal} {allDone ? '✓' : ''}
+                        </span>
+                      </div>
+                      <div className="okr-card-bar-wrap">
+                        <div className="okr-card-bar">
+                          <div className="okr-card-bar-fill" style={{ width: `${pct}%`, background: barColor }} />
+                        </div>
+                        <span className="okr-card-bar-pct" style={{ color: ratioColor }}>{Math.round(pct)}%</span>
+                      </div>
+                    </>
+                  );
+                })()}
 
                 <div className="okr-ota-list">
                   {sorted.map(p => {

@@ -776,6 +776,249 @@ function OKRDashboard({ properties }) {
   );
 }
 
+
+// -- Agoda 분석 차트 컴포넌트들
+
+// 차트 ②: 리뷰 작성률 Bar + 목표 기준선
+function AgodaRateChart({ labels, rates }) {
+  const canvasRef = useRef(null);
+  useEffect(() => {
+    if (!canvasRef.current || !labels.length) return;
+    const ctx = canvasRef.current.getContext('2d');
+    if (canvasRef.current.__chart) canvasRef.current.__chart.destroy();
+    canvasRef.current.__chart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: '리뷰 작성률 (%)',
+          data: rates,
+          backgroundColor: 'rgba(232,67,147,0.25)',
+          borderColor: '#E84393',
+          borderWidth: 2,
+          borderRadius: 4,
+        }],
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          annotation: {
+            annotations: {
+              target: {
+                type: 'line', yMin: 20, yMax: 20,
+                borderColor: '#E84393', borderWidth: 2,
+                borderDash: [6, 4],
+                label: { display: true, content: '목표 20%', position: 'end', color: '#E84393', font: { size: 11 } }
+              }
+            }
+          },
+          tooltip: {
+            callbacks: { label: ctx => `${ctx.parsed.y}%` }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true, max: 100,
+            ticks: { callback: v => `${v}%` },
+            grid: { color: 'rgba(128,128,128,0.1)' }
+          },
+          x: { grid: { display: false } }
+        }
+      }
+    });
+    return () => { if (canvasRef.current?.__chart) canvasRef.current.__chart.destroy(); };
+  }, [labels, rates]);
+  return <div style={{position:'relative', height:'220px'}}><canvas ref={canvasRef} /></div>;
+}
+
+// 차트 ③: 점수 분포 — 저점수 비율 변화 (Bar + Line 증감)
+function AgodaDistChart({ labels, weekly }) {
+  const canvasRef = useRef(null);
+  const [focusScore, setFocusScore] = useState(null); // null = 전체, 1~4 = 저점수
+
+  useEffect(() => {
+    if (!canvasRef.current || !labels.length) return;
+    const ctx = canvasRef.current.getContext('2d');
+    if (canvasRef.current.__chart) canvasRef.current.__chart.destroy();
+
+    // 선택된 점수대 비율 계산
+    const scores = focusScore ? [focusScore] : [1, 2, 3, 4]; // 기본: 저점수(1~4)
+    const totals = weekly.map(w => [1,2,3,4,5,6,7,8,9,10].reduce((s,i) => s + (parseInt(w[`score_${i}`])||0), 0));
+    const ratioData = weekly.map((w, idx) => {
+      const total = totals[idx];
+      if (!total) return 0;
+      const cnt = scores.reduce((s, sc) => s + (parseInt(w[`score_${sc}`])||0), 0);
+      return parseFloat(((cnt / total) * 100).toFixed(1));
+    });
+
+    // 전주 대비 증감
+    const deltaData = ratioData.map((v, i) => i === 0 ? null : parseFloat((v - ratioData[i-1]).toFixed(1)));
+    const deltaColors = deltaData.map(d => d === null ? 'transparent' : d > 0 ? '#E24B4A' : '#0F6E56');
+
+    canvasRef.current.__chart = new Chart(ctx, {
+      data: {
+        labels,
+        datasets: [
+          {
+            type: 'bar',
+            label: `${focusScore ? focusScore+'점' : '1~4점'} 비율 (%)`,
+            data: ratioData,
+            backgroundColor: 'rgba(232,67,147,0.2)',
+            borderColor: '#E84393',
+            borderWidth: 2,
+            borderRadius: 4,
+            yAxisID: 'y',
+          },
+          {
+            type: 'line',
+            label: '전주 대비 증감(%p)',
+            data: deltaData,
+            borderColor: ctx => 'transparent',
+            segment: { borderColor: ctx => {
+              const d = deltaData[ctx.p1DataIndex];
+              return d > 0 ? '#E24B4A' : '#0F6E56';
+            }},
+            pointBackgroundColor: deltaData.map(d => d === null ? 'transparent' : d > 0 ? '#E24B4A' : '#0F6E56'),
+            pointRadius: 5,
+            borderWidth: 2,
+            yAxisID: 'y2',
+            tension: 0.3,
+          }
+        ],
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: 'top', labels: { font: { size: 11 } } },
+          tooltip: {
+            callbacks: {
+              label: ctx => ctx.datasetIndex === 0
+                ? `비율: ${ctx.parsed.y}%`
+                : `증감: ${ctx.parsed.y > 0 ? '+' : ''}${ctx.parsed.y}%p`
+            }
+          }
+        },
+        scales: {
+          y: { beginAtZero: true, position: 'left', ticks: { callback: v => `${v}%` }, grid: { color: 'rgba(128,128,128,0.1)' } },
+          y2: { position: 'right', grid: { display: false }, ticks: { callback: v => `${v > 0 ? '+' : ''}${v}%p` } },
+          x: { grid: { display: false } }
+        }
+      }
+    });
+    return () => { if (canvasRef.current?.__chart) canvasRef.current.__chart.destroy(); };
+  }, [labels, weekly, focusScore]);
+
+  return (
+    <div>
+      <div className="ag-score-filter">
+        {[null,1,2,3,4].map(s => (
+          <button key={String(s)} className={`ag-score-chip${focusScore === s ? ' active' : ''}`} onClick={() => setFocusScore(s)}>
+            {s === null ? '저점수(1~4점)' : `${s}점`}
+          </button>
+        ))}
+      </div>
+      <div style={{position:'relative', height:'220px'}}><canvas ref={canvasRef} /></div>
+    </div>
+  );
+}
+
+// 차트 ④: 불만 건수 추이 (Line + 기준선)
+function AgodaComplaintsChart({ labels, room, bath, baselineRoom, baselineBath, memos }) {
+  const canvasRef = useRef(null);
+  useEffect(() => {
+    if (!canvasRef.current || !labels.length) return;
+    const ctx = canvasRef.current.getContext('2d');
+    if (canvasRef.current.__chart) canvasRef.current.__chart.destroy();
+
+    const datasets = [
+      {
+        label: '객실 정비 불만',
+        data: room,
+        borderColor: '#E84393',
+        backgroundColor: 'rgba(232,67,147,0.08)',
+        pointBackgroundColor: '#E84393',
+        pointRadius: 5,
+        tension: 0.3,
+        fill: true,
+      },
+      {
+        label: '욕실 청결 불만',
+        data: bath,
+        borderColor: '#1F72B8',
+        backgroundColor: 'rgba(31,114,184,0.08)',
+        pointBackgroundColor: '#1F72B8',
+        pointRadius: 5,
+        tension: 0.3,
+        fill: true,
+      },
+    ];
+
+    if (baselineRoom != null) {
+      datasets.push({
+        label: `객실 기준선 (${baselineRoom}건)`,
+        data: Array(labels.length).fill(baselineRoom),
+        borderColor: '#E84393',
+        borderWidth: 1.5,
+        borderDash: [6, 4],
+        pointRadius: 0,
+        fill: false,
+      });
+    }
+    if (baselineBath != null) {
+      datasets.push({
+        label: `욕실 기준선 (${baselineBath}건)`,
+        data: Array(labels.length).fill(baselineBath),
+        borderColor: '#1F72B8',
+        borderWidth: 1.5,
+        borderDash: [6, 4],
+        pointRadius: 0,
+        fill: false,
+      });
+    }
+
+    canvasRef.current.__chart = new Chart(ctx, {
+      type: 'line',
+      data: { labels, datasets },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: 'top', labels: { font: { size: 11 } } },
+          tooltip: {
+            callbacks: {
+              afterBody: (items) => {
+                const idx = items[0]?.dataIndex;
+                return memos[idx] ? [`메모: ${memos[idx]}`] : [];
+              }
+            }
+          }
+        },
+        scales: {
+          y: { beginAtZero: true, ticks: { callback: v => `${v}건` }, grid: { color: 'rgba(128,128,128,0.1)' } },
+          x: { grid: { display: false } }
+        }
+      }
+    });
+    return () => { if (canvasRef.current?.__chart) canvasRef.current.__chart.destroy(); };
+  }, [labels, room, bath, baselineRoom, baselineBath]);
+
+  return (
+    <div>
+      <div style={{position:'relative', height:'220px'}}><canvas ref={canvasRef} /></div>
+      {memos.some(m => m) && (
+        <div className="ag-memo-list">
+          {labels.map((l, i) => memos[i] ? (
+            <div key={l} className="ag-memo-item">
+              <span className="ag-memo-week">{l}</span>
+              <span className="ag-memo-text">{memos[i]}</span>
+            </div>
+          ) : null)}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // -- Property Panel
 function PropertyPanel({ property }) {
   const [reviews, setReviews] = useState([]);
@@ -785,6 +1028,19 @@ function PropertyPanel({ property }) {
     period_start: '', period_end: '', rating: '', response_rate: '', trips: '', cancel_rate: '', memo: ''
   });
   const [shStatus, setShStatus] = useState('idle');
+
+  // Agoda 분석 탭 상태
+  const [agodaWeekly, setAgodaWeekly] = useState([]);
+  const [agodaComplaints, setAgodaComplaints] = useState([]);
+  const [awForm, setAwForm] = useState({
+    week_start: '', review_count: '', checkout_count: '',
+    score_1:'', score_2:'', score_3:'', score_4:'', score_5:'',
+    score_6:'', score_7:'', score_8:'', score_9:'', score_10:''
+  });
+  const [acForm, setAcForm] = useState({ week_start: '', room_complaints: '', bathroom_complaints: '', memo: '' });
+  const [awStatus, setAwStatus] = useState('idle');
+  const [acStatus, setAcStatus] = useState('idle');
+  const [agodaInputSection, setAgodaInputSection] = useState('weekly'); // 'weekly' | 'complaints'
 
   const SUPERHOST_PERIODS = [
     { start: '2025-04-01', end: '2026-03-31', label: '2025.04 ~ 2026.03' },
@@ -806,9 +1062,65 @@ function PropertyPanel({ property }) {
     setSuperhostRecords(Array.isArray(data) ? data : []);
   };
 
+  const loadAgoda = async () => {
+    const [w, c] = await Promise.all([
+      fetch(`/api/agoda-weekly?property_id=${property.id}`).then(r => r.json()),
+      fetch(`/api/agoda-complaints?property_id=${property.id}`).then(r => r.json()),
+    ]);
+    setAgodaWeekly(Array.isArray(w) ? w : []);
+    setAgodaComplaints(Array.isArray(c) ? c : []);
+  };
+
+  const saveAgodaWeekly = async (e) => {
+    e.preventDefault();
+    setAwStatus('loading');
+    const res = await fetch('/api/agoda-weekly', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ property_id: property.id, ...awForm }),
+    });
+    if (res.ok) {
+      setAwStatus('ok');
+      setAwForm({ week_start:'', review_count:'', checkout_count:'',
+        score_1:'',score_2:'',score_3:'',score_4:'',score_5:'',
+        score_6:'',score_7:'',score_8:'',score_9:'',score_10:'' });
+      loadAgoda();
+      setTimeout(() => setAwStatus('idle'), 2000);
+    } else { setAwStatus('error'); setTimeout(() => setAwStatus('idle'), 2000); }
+  };
+
+  const saveAgodaComplaints = async (e) => {
+    e.preventDefault();
+    setAcStatus('loading');
+    const res = await fetch('/api/agoda-complaints', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ property_id: property.id, ...acForm }),
+    });
+    if (res.ok) {
+      setAcStatus('ok');
+      setAcForm({ week_start:'', room_complaints:'', bathroom_complaints:'', memo:'' });
+      loadAgoda();
+      setTimeout(() => setAcStatus('idle'), 2000);
+    } else { setAcStatus('error'); setTimeout(() => setAcStatus('idle'), 2000); }
+  };
+
+  const deleteAgodaWeekly = async (id) => {
+    if (!confirm('삭제할까요?')) return;
+    await fetch(`/api/agoda-weekly?id=${id}`, { method: 'DELETE' });
+    loadAgoda();
+  };
+
+  const deleteAgodaComplaints = async (id) => {
+    if (!confirm('삭제할까요?')) return;
+    await fetch(`/api/agoda-complaints?id=${id}`, { method: 'DELETE' });
+    loadAgoda();
+  };
+
   useEffect(() => {
     load();
     if (property.platform === 'airbnb') loadSuperhost();
+    if (property.platform === 'agoda') loadAgoda();
   }, [property.id]);
 
   const saveSuperhost = async (e) => {
@@ -847,6 +1159,7 @@ function PropertyPanel({ property }) {
     load();
   };
 
+  const isAgoda = property.platform === 'agoda';
   const isAirbnb = property.platform === 'airbnb';
   const isBooking = property.platform === 'booking';
   const isTripcom = property.platform === 'tripcom';
@@ -883,9 +1196,9 @@ function PropertyPanel({ property }) {
         </div>
         <div className="panel-header-right">
           <div className="panel-tabs">
-            {(isAirbnb ? ['dashboard', 'superhost', 'history'] : ['dashboard', 'history']).map(t => (
+            {(isAirbnb ? ['dashboard', 'superhost', 'history'] : isAgoda ? ['dashboard', 'agoda-analysis', 'history'] : ['dashboard', 'history']).map(t => (
               <button key={t} className={`tab-btn ${tab === t ? 'active' : ''}`} style={tab === t ? { borderBottomColor: accent, color: accent } : {}} onClick={() => setTab(t)}>
-                {{ dashboard: '대시보드', superhost: '슈퍼호스트', history: '기록' }[t]}
+                {{ dashboard: '대시보드', superhost: '슈퍼호스트', 'agoda-analysis': 'Agoda 분석', history: '기록' }[t]}
               </button>
             ))}
           </div>
@@ -914,6 +1227,16 @@ function PropertyPanel({ property }) {
               style={{ background: accent, color: '#fff', borderColor: accent, marginLeft: '8px' }}
             >
               기록 저장
+            </button>
+          )}
+          {tab === 'agoda-analysis' && isAgoda && (
+            <button
+              type="submit"
+              form={agodaInputSection === 'weekly' ? 'aw-form' : 'ac-form'}
+              className="btn-input"
+              style={{ background: accent, color: '#fff', borderColor: accent, marginLeft: '8px' }}
+            >
+              데이터 저장
             </button>
           )}        </div>
       </div>
@@ -1162,6 +1485,180 @@ function PropertyPanel({ property }) {
       {tab === 'superhost' && isAirbnb && (
         <div style={{ display: 'none' }}>
           <button type="submit" form="sh-form" id="sh-submit-hidden" />
+        </div>
+      )}
+
+      {/* Agoda 분석 탭 */}
+      {tab === 'agoda-analysis' && isAgoda && (
+        <div className="panel-body">
+
+          {/* 입력 섹션 토글 */}
+          <div className="ag-input-toggle">
+            <button className={`ag-toggle-btn${agodaInputSection === 'weekly' ? ' active' : ''}`} onClick={() => setAgodaInputSection('weekly')}>리뷰 작성률 / 점수 분포 입력</button>
+            <button className={`ag-toggle-btn${agodaInputSection === 'complaints' ? ' active' : ''}`} onClick={() => setAgodaInputSection('complaints')}>불만 건수 입력</button>
+          </div>
+
+          {/* 리뷰 작성률 + 점수 분포 입력 폼 */}
+          {agodaInputSection === 'weekly' && (
+            <form id="aw-form" onSubmit={saveAgodaWeekly} className="review-form ag-form">
+              <div className="form-row">
+                <div className="form-field">
+                  <label>주차 시작일 (월요일)</label>
+                  <input type="date" value={awForm.week_start} onChange={e => setAwForm(f => ({...f, week_start: e.target.value}))} required />
+                </div>
+                <div className="form-field">
+                  <label>리뷰 제출 건수</label>
+                  <input type="number" min="0" placeholder="예: 12" value={awForm.review_count} onChange={e => setAwForm(f => ({...f, review_count: e.target.value}))} />
+                </div>
+                <div className="form-field">
+                  <label>아고다 체크아웃 수</label>
+                  <input type="number" min="0" placeholder="예: 80" value={awForm.checkout_count} onChange={e => setAwForm(f => ({...f, checkout_count: e.target.value}))} />
+                </div>
+              </div>
+              <div className="ag-section-label">점수대별 건수 (1점 ~ 10점)</div>
+              <div className="form-row ag-score-row">
+                {[1,2,3,4,5,6,7,8,9,10].map(s => (
+                  <div key={s} className="form-field ag-score-field">
+                    <label>{s}점</label>
+                    <input type="number" min="0" placeholder="0"
+                      value={awForm[`score_${s}`]}
+                      onChange={e => setAwForm(f => ({...f, [`score_${s}`]: e.target.value}))} />
+                  </div>
+                ))}
+              </div>
+              {awStatus === 'ok' && <p className="form-status ok">✓ 저장되었습니다</p>}
+              {awStatus === 'error' && <p className="form-status error">✕ 저장 실패</p>}
+            </form>
+          )}
+
+          {/* 불만 건수 입력 폼 */}
+          {agodaInputSection === 'complaints' && (
+            <form id="ac-form" onSubmit={saveAgodaComplaints} className="review-form ag-form">
+              <div className="form-row">
+                <div className="form-field">
+                  <label>주차 시작일 (월요일)</label>
+                  <input type="date" value={acForm.week_start} onChange={e => setAcForm(f => ({...f, week_start: e.target.value}))} required />
+                </div>
+                <div className="form-field">
+                  <label>객실 정비 불만 건수</label>
+                  <input type="number" min="0" placeholder="예: 3" value={acForm.room_complaints} onChange={e => setAcForm(f => ({...f, room_complaints: e.target.value}))} />
+                </div>
+                <div className="form-field">
+                  <label>욕실 청결 불만 건수</label>
+                  <input type="number" min="0" placeholder="예: 2" value={acForm.bathroom_complaints} onChange={e => setAcForm(f => ({...f, bathroom_complaints: e.target.value}))} />
+                </div>
+                <div className="form-field" style={{flex: '2'}}>
+                  <label>운영 메모 (조치 내용 등)</label>
+                  <input type="text" placeholder="예: 청소 업체 변경, 체크리스트 강화" value={acForm.memo} onChange={e => setAcForm(f => ({...f, memo: e.target.value}))} />
+                </div>
+              </div>
+              {acStatus === 'ok' && <p className="form-status ok">✓ 저장되었습니다</p>}
+              {acStatus === 'error' && <p className="form-status error">✕ 저장 실패</p>}
+            </form>
+          )}
+
+          {agodaWeekly.length === 0 && agodaComplaints.length === 0 ? (
+            <div className="empty-state" style={{marginTop:'32px'}}>
+              <p>아직 입력된 데이터가 없습니다</p>
+              <p style={{fontSize:'13px', color:'var(--text-3)'}}>위 폼에서 주간 데이터를 입력해주세요</p>
+            </div>
+          ) : (
+            <>
+              {/* 차트 ②: 리뷰 작성률 */}
+              {agodaWeekly.length > 0 && (() => {
+                const labels = agodaWeekly.map(w => w.week_start?.slice(0,10));
+                const rates = agodaWeekly.map(w =>
+                  w.checkout_count > 0 ? parseFloat(((w.review_count / w.checkout_count) * 100).toFixed(1)) : null
+                );
+                return (
+                  <div className="chart-section">
+                    <h3 className="section-title">② 리뷰 작성률 (주별)</h3>
+                    <p className="ag-chart-desc">리뷰 제출 건수 / 체크아웃 수 × 100</p>
+                    <AgodaRateChart labels={labels} rates={rates} />
+                    <div className="ag-data-table">
+                      <table className="history-table">
+                        <thead><tr><th>주차</th><th>리뷰 수</th><th>체크아웃</th><th>작성률</th><th></th></tr></thead>
+                        <tbody>
+                          {[...agodaWeekly].reverse().map(w => (
+                            <tr key={w.id}>
+                              <td>{w.week_start?.slice(0,10)}</td>
+                              <td>{w.review_count ?? '—'}</td>
+                              <td>{w.checkout_count ?? '—'}</td>
+                              <td style={{fontWeight:500}}>
+                                {w.checkout_count > 0 ? `${((w.review_count/w.checkout_count)*100).toFixed(1)}%` : '—'}
+                              </td>
+                              <td><button className="delete-btn" onClick={() => deleteAgodaWeekly(w.id)}>×</button></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* 차트 ③: 점수 분포 */}
+              {agodaWeekly.length > 0 && (() => {
+                const labels = agodaWeekly.map(w => w.week_start?.slice(0,10));
+                return (
+                  <div className="chart-section" style={{marginTop:'28px'}}>
+                    <h3 className="section-title">③ 점수 분포 — 저점수 비율 변화</h3>
+                    <p className="ag-chart-desc">각 점수대(1~10점)의 주별 비율(%) 및 전주 대비 증감(%p)</p>
+                    <AgodaDistChart labels={labels} weekly={agodaWeekly} />
+                  </div>
+                );
+              })()}
+
+              {/* 차트 ④: 불만 건수 */}
+              {agodaComplaints.length > 0 && (() => {
+                const labels = agodaComplaints.map(c => c.week_start?.slice(0,10));
+                const room = agodaComplaints.map(c => c.room_complaints ?? 0);
+                const bath = agodaComplaints.map(c => c.bathroom_complaints ?? 0);
+                // 기준선: 1~2월 데이터 평균
+                const baseline = agodaComplaints.filter(c => {
+                  const m = parseInt(c.week_start?.slice(5,7));
+                  return m === 1 || m === 2;
+                });
+                const baselineRoom = baseline.length > 0
+                  ? Math.round(baseline.reduce((s,c) => s + (c.room_complaints||0), 0) / baseline.length * 10) / 10
+                  : null;
+                const baselineBath = baseline.length > 0
+                  ? Math.round(baseline.reduce((s,c) => s + (c.bathroom_complaints||0), 0) / baseline.length * 10) / 10
+                  : null;
+                const memos = agodaComplaints.map(c => c.memo);
+                return (
+                  <div className="chart-section" style={{marginTop:'28px'}}>
+                    <h3 className="section-title">④ 객실 정비 / 욕실 청결 불만 건수 추이</h3>
+                    <p className="ag-chart-desc">
+                      점선: 1~2월 평균 기준선
+                      {baselineRoom != null && ` (객실 ${baselineRoom}건 / 욕실 ${baselineBath}건)`}
+                    </p>
+                    <AgodaComplaintsChart
+                      labels={labels} room={room} bath={bath}
+                      baselineRoom={baselineRoom} baselineBath={baselineBath}
+                      memos={memos}
+                    />
+                    <div className="ag-data-table">
+                      <table className="history-table">
+                        <thead><tr><th>주차</th><th>객실 정비</th><th>욕실 청결</th><th>메모</th><th></th></tr></thead>
+                        <tbody>
+                          {[...agodaComplaints].reverse().map(c => (
+                            <tr key={c.id}>
+                              <td>{c.week_start?.slice(0,10)}</td>
+                              <td>{c.room_complaints ?? 0}건</td>
+                              <td>{c.bathroom_complaints ?? 0}건</td>
+                              <td style={{fontSize:'12px', color:'var(--text-2)'}}>{c.memo || '—'}</td>
+                              <td><button className="delete-btn" onClick={() => deleteAgodaComplaints(c.id)}>×</button></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })()}
+            </>
+          )}
         </div>
       )}
 

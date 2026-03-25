@@ -1268,3 +1268,105 @@ body {
   font-size: 14px;
   flex-shrink: 0;
 }
+
+/* ============================
+   Agoda 분석 탭
+   ============================ */
+.ag-input-toggle {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.ag-toggle-btn {
+  padding: 7px 16px;
+  font-size: 13px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+.ag-toggle-btn:hover { background: var(--bg); }
+.ag-toggle-btn.active {
+  background: #E84393;
+  border-color: #E84393;
+  color: #fff;
+}
+.ag-form { margin-bottom: 8px; }
+.ag-section-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-3);
+  margin: 12px 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.ag-score-row {
+  display: grid !important;
+  grid-template-columns: repeat(10, minmax(0, 1fr)) !important;
+  gap: 6px !important;
+}
+.ag-score-field label {
+  font-size: 11px !important;
+  text-align: center;
+}
+.ag-score-field input {
+  text-align: center;
+  padding: 4px 2px !important;
+  font-size: 12px !important;
+}
+.ag-chart-desc {
+  font-size: 12px;
+  color: var(--text-3);
+  margin: -4px 0 12px;
+}
+.ag-score-filter {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.ag-score-chip {
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 99px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+.ag-score-chip:hover { background: var(--bg); }
+.ag-score-chip.active {
+  background: #E84393;
+  border-color: #E84393;
+  color: #fff;
+}
+.ag-data-table {
+  margin-top: 12px;
+  overflow-x: auto;
+}
+.ag-memo-list {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ag-memo-item {
+  display: flex;
+  gap: 10px;
+  font-size: 12px;
+  padding: 4px 8px;
+  background: var(--bg);
+  border-radius: 6px;
+}
+.ag-memo-week {
+  color: var(--text-3);
+  flex-shrink: 0;
+}
+.ag-memo-text {
+  color: var(--text-2);
+}

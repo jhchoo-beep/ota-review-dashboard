@@ -32,7 +32,7 @@ export function TabReviewRate({ propertyId, accent }) {
   const canvasRef = useRef(null);
 
   const load = async () => {
-    const r = await fetch(`/api/agoda-weekly?property_id=${propertyId}`).then(x => x.json());
+    const r = await fetch(`/api/agoda-review-rate?property_id=${propertyId}`).then(x => x.json());
     setData(Array.isArray(r) ? r : []);
   };
 
@@ -41,7 +41,7 @@ export function TabReviewRate({ propertyId, accent }) {
   const save = async (e) => {
     e.preventDefault();
     setStatus('loading');
-    const res = await fetch('/api/agoda-weekly', {
+    const res = await fetch('/api/agoda-review-rate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -64,7 +64,7 @@ export function TabReviewRate({ propertyId, accent }) {
 
   const del = async (id) => {
     if (!confirm('삭제할까요?')) return;
-    await fetch(`/api/agoda-weekly?id=${id}`, { method: 'DELETE' });
+    await fetch(`/api/agoda-review-rate?id=${id}`, { method: 'DELETE' });
     load();
   };
 
@@ -183,7 +183,7 @@ export function TabScoreDist({ propertyId, accent }) {
   const lineRef = useRef(null);
 
   const load = async () => {
-    const r = await fetch(`/api/agoda-weekly?property_id=${propertyId}`).then(x => x.json());
+    const r = await fetch(`/api/agoda-score-dist?property_id=${propertyId}`).then(x => x.json());
     const arr = Array.isArray(r) ? r : [];
     setData(arr);
     if (arr.length > 0) setSelectedWeekIdx(arr.length - 1);
@@ -194,7 +194,7 @@ export function TabScoreDist({ propertyId, accent }) {
   const save = async (e) => {
     e.preventDefault();
     setStatus('loading');
-    const res = await fetch('/api/agoda-weekly', {
+    const res = await fetch('/api/agoda-score-dist', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ property_id: propertyId, ...form }),
@@ -210,7 +210,7 @@ export function TabScoreDist({ propertyId, accent }) {
 
   const del = async (id) => {
     if (!confirm('삭제할까요?')) return;
-    await fetch(`/api/agoda-weekly?id=${id}`, { method: 'DELETE' });
+    await fetch(`/api/agoda-score-dist?id=${id}`, { method: 'DELETE' });
     load();
   };
 

@@ -320,6 +320,8 @@ function deltaTextColor(d) {
   return d > 0 ? '#791F1F' : '#085041';
 }
 
+const VOC_CATS = ['청결', '서비스', '시설', '가격', '위치'];
+
 export function TabScoreDist({ propertyId, accent }) {
   const [data, setData] = useState([]);
   const [form, setForm] = useState({
@@ -328,14 +330,33 @@ export function TabScoreDist({ propertyId, accent }) {
     score_6:'', score_7:'', score_8:'', score_9:'', score_10:'',
   });
   const [status, setStatus] = useState('idle');
-  const [showCount, setShowCount] = useState(false); // false=비율, true=건수
+  const [showCount, setShowCount] = useState(false);
+
+  // VOC 상태
+  const [vocData, setVocData] = useState([]);
+  const [vocWeekIdx, setVocWeekIdx] = useState(null);
+  const [vocForm, setVocForm] = useState({ band: '1~2점', category: '청결', sentiment: 'bad', keyword: '' });
+  const [vocStatus, setVocStatus] = useState('idle');
 
   const load = async () => {
     const r = await fetch(`/api/agoda-score-dist?property_id=${propertyId}`).then(x => x.json());
-    setData(Array.isArray(r) ? r : []);
+    const arr = Array.isArray(r) ? r : [];
+    setData(arr);
+    if (arr.length > 0 && vocWeekIdx === null) setVocWeekIdx(arr.length - 1);
+  };
+
+  const loadVoc = async (weekStart) => {
+    const r = await fetch(`/api/agoda-voc?property_id=${propertyId}&week_start=${weekStart}`).then(x => x.json());
+    setVocData(Array.isArray(r) ? r : []);
   };
 
   useEffect(() => { load(); }, [propertyId]);
+
+  useEffect(() => {
+    if (data.length > 0 && vocWeekIdx !== null && data[vocWeekIdx]) {
+      loadVoc(fmtWeek(data[vocWeekIdx].week_start));
+    }
+  }, [vocWeekIdx, data]);
 
   const save = async (e) => {
     e.preventDefault();
@@ -358,6 +379,29 @@ export function TabScoreDist({ propertyId, accent }) {
     if (!confirm('삭제할까요?')) return;
     await fetch(`/api/agoda-score-dist?id=${id}`, { method: 'DELETE' });
     load();
+  };
+
+  const saveVoc = async (e) => {
+    e.preventDefault();
+    if (!vocForm.keyword.trim() || vocWeekIdx === null) return;
+    const weekStart = fmtWeek(data[vocWeekIdx]?.week_start);
+    setVocStatus('loading');
+    const res = await fetch('/api/agoda-voc', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ property_id: propertyId, week_start: weekStart, ...vocForm }),
+    });
+    if (res.ok) {
+      setVocStatus('ok');
+      setVocForm(f => ({ ...f, keyword: '' }));
+      loadVoc(weekStart);
+      setTimeout(() => setVocStatus('idle'), 1500);
+    } else { setVocStatus('error'); setTimeout(() => setVocStatus('idle'), 1500); }
+  };
+
+  const delVoc = async (id) => {
+    await fetch(`/api/agoda-voc?id=${id}`, { method: 'DELETE' });
+    if (data[vocWeekIdx]) loadVoc(fmtWeek(data[vocWeekIdx].week_start));
   };
 
   // 전체 주차의 구간별 비율 + 건수 계산
@@ -515,6 +559,99 @@ export function TabScoreDist({ propertyId, accent }) {
             </div>
 
           </div>
+
+          {/* 증감 요약 칩 — 최신 주차 기준 ±1%p 이상만 표시 */}
+          {data.length > 1 && (() => {
+            const lastIdx = data.length - 1;
+            const cur = allPcts[lastIdx];
+            const prev = allPcts[lastIdx - 1];
+            const chips = BANDS.map((b, bi) => ({
+              label: b.label,
+              delta: parseFloat((cur[bi] - prev[bi]).toFixed(1)),
+            })).filter(c => Math.abs(c.delta) >= 1);
+            if (!chips.length) return null;
+            return (
+              <div style={{ marginTop: 16, marginBottom: 4 }}>
+                <div className="voc-section-label">최신 주차 증감 요약 (W{data.length - 1} → W{data.length})</div>
+                <div className="delta-chips">
+                  {chips.map(c => (
+                    <span key={c.label}
+                      className={`delta-chip ${c.delta > 0 ? 'chip-up' : 'chip-dn'}`}>
+                      {c.delta > 0 ? '▲' : '▼'} {c.label} {c.delta > 0 ? '+' : ''}{c.delta}%p
+                    </span>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* VOC 요약 패널 */}
+          {data.length > 0 && (
+            <div className="voc-panel" style={{ marginTop: 20 }}>
+              <div className="voc-panel-header">
+                <span className="voc-section-label" style={{ margin: 0 }}>VOC 요약</span>
+                <div className="voc-week-chips">
+                  {data.map((d, i) => (
+                    <button key={d.id}
+                      className={`voc-wchip${vocWeekIdx === i ? ' on' : ''}`}
+                      style={vocWeekIdx === i ? { background: accent, borderColor: accent, color: '#fff' } : {}}
+                      onClick={() => setVocWeekIdx(i)}>
+                      W{i + 1} {fmtWeek(d.week_start).slice(5)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* VOC 입력 폼 */}
+              <form onSubmit={saveVoc} className="voc-input-row">
+                <select value={vocForm.band} onChange={e => setVocForm(f => ({ ...f, band: e.target.value }))}>
+                  {BANDS.map(b => <option key={b.key} value={b.label}>{b.label}</option>)}
+                </select>
+                <select value={vocForm.category} onChange={e => setVocForm(f => ({ ...f, category: e.target.value }))}>
+                  {VOC_CATS.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+                <select value={vocForm.sentiment} onChange={e => setVocForm(f => ({ ...f, sentiment: e.target.value }))}>
+                  <option value="bad">bad</option>
+                  <option value="good">good</option>
+                </select>
+                <input type="text" placeholder="키워드 입력 (예: 침구 냄새)" value={vocForm.keyword}
+                  onChange={e => setVocForm(f => ({ ...f, keyword: e.target.value }))}
+                  style={{ flex: 1, minWidth: 120 }} />
+                <button type="submit" disabled={vocStatus === 'loading'} style={{ background: accent, color: '#fff', border: 'none', borderRadius: 6, padding: '0 14px', fontSize: 12, cursor: 'pointer', height: 32 }}>
+                  {vocStatus === 'loading' ? '…' : vocStatus === 'ok' ? '✓' : '+'}
+                </button>
+              </form>
+
+              {/* VOC 항목 표시 */}
+              <div className="voc-body">
+                {BANDS.map(b => {
+                  const items = vocData.filter(v => v.band === b.label);
+                  if (!items.length) return null;
+                  return (
+                    <div key={b.key} className="voc-row">
+                      <span className={`voc-band-tag ${b.label <= '4~5점' ? (b.label <= '2~3점' ? 'tag-low' : 'tag-mid-low') : b.label <= '6~7점' ? 'tag-mid' : 'tag-high'}`}>
+                        {b.label}
+                      </span>
+                      <div className="voc-badges">
+                        {items.map(v => (
+                          <span key={v.id} className={`voc-badge ${v.sentiment === 'bad' ? 'badge-bad' : 'badge-good'}`}>
+                            <span className="badge-cat">{v.category}</span>
+                            {v.keyword}
+                            <button className="voc-del" onClick={() => delVoc(v.id)}>×</button>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+                {vocData.length === 0 && (
+                  <p style={{ fontSize: 12, color: 'var(--color-text-tertiary)', padding: '8px 0' }}>
+                    위 폼에서 이번 주 VOC 키워드를 입력하세요
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* 기록 테이블 */}
           <div className="ag-table-wrap" style={{ marginTop: 20 }}>

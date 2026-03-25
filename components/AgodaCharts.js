@@ -106,6 +106,7 @@ export function TabReviewRate({ propertyId, accent }) {
     },
     options: {
       responsive: true,
+      maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: { position: 'top', labels: { font: { size: 11 } } },
@@ -591,6 +592,7 @@ export function TabComplaints({ propertyId, accent }) {
       data: { labels, datasets },
       options: {
         responsive: true,
+        maintainAspectRatio: false,
         plugins: {
           legend: { position: 'top', labels: { font: { size: 11 } } },
           tooltip: {

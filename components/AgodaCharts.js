@@ -404,18 +404,21 @@ export function TabScoreDist({ propertyId, accent }) {
     if (data[vocWeekIdx]) loadVoc(fmtWeek(data[vocWeekIdx].week_start));
   };
 
+  // 최근 8주만 표시 (DB에는 전체 저장, 히트맵은 최근 8주)
+  const recentData = data.slice(-8);
+
   // 전체 주차의 구간별 비율 + 건수 계산
-  const allPcts = data.map(w => calcBandPcts(w));
-  const allCounts = data.map(w => BANDS.map(b => parseInt(w[b.key]) || 0));
+  const allPcts = recentData.map(w => calcBandPcts(w));
+  const allCounts = recentData.map(w => BANDS.map(b => parseInt(w[b.key]) || 0));
 
   // 전주 대비 증감: delta[wi][bi] = 이번주 - 전주
-  const allDeltas = data.map((_, wi) =>
+  const allDeltas = recentData.map((_, wi) =>
     wi === 0 ? null : BANDS.map((_, bi) =>
       parseFloat((allPcts[wi][bi] - allPcts[wi - 1][bi]).toFixed(1))
     )
   );
 
-  const weeks = data.map(d => fmtWeek(d.week_start));
+  const weeks = recentData.map(d => fmtWeek(d.week_start));
 
   return (
     <div className="panel-body">
@@ -561,8 +564,8 @@ export function TabScoreDist({ propertyId, accent }) {
           </div>
 
           {/* 증감 요약 칩 — 최신 주차 기준 ±1%p 이상만 표시 */}
-          {data.length > 1 && (() => {
-            const lastIdx = data.length - 1;
+          {recentData.length > 1 && (() => {
+            const lastIdx = recentData.length - 1;
             const cur = allPcts[lastIdx];
             const prev = allPcts[lastIdx - 1];
             const chips = BANDS.map((b, bi) => ({

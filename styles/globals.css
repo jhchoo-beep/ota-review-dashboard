@@ -1535,8 +1535,8 @@ label.ag-high { color: #0F6E56; }
   font-weight: 500;
   border: 0.5px solid;
 }
-.chip-up { background: #FCEBEB; border-color: #F7C1C1; color: #791F1F; }
-.chip-dn { background: #E1F5EE; border-color: #9FE1CB; color: #085041; }
+.chip-up { background: #E1F5EE; border-color: #9FE1CB; color: #085041; }
+.chip-dn { background: #FCEBEB; border-color: #F7C1C1; color: #791F1F; }
 
 /* VOC 패널 */
 .voc-panel {

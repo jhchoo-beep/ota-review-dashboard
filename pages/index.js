@@ -6,7 +6,8 @@ import {
   PointElement, LineElement, Tooltip, Legend, Filler
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
-import { TabReviewRate, TabScoreDist, TabComplaints } from '../components/AgodaCharts';
+import { TabReviewRate, TabScoreDist, TabComplaints, TabOKR } from '../components/AgodaCharts';
+import { TabOKR } from '../components/AgodaOKR';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, BarController, PointElement, LineElement, Tooltip, Legend, Filler);
 
@@ -892,7 +893,7 @@ function PropertyPanel({ property }) {
             {(isAirbnb
               ? ['dashboard', 'superhost', 'history']
               : isAgoda
-              ? ['dashboard', 'review-rate', 'score-dist', 'complaints', 'history']
+              ? ['dashboard', 'okr', 'review-rate', 'score-dist', 'complaints', 'history']
               : ['dashboard', 'history']
             ).map(t => (
               <button key={t} className={`tab-btn ${tab === t ? 'active' : ''}`}
@@ -902,6 +903,7 @@ function PropertyPanel({ property }) {
                    'review-rate': '리뷰 작성률',
                    'score-dist': '점수 분포',
                    'complaints': '정비/욕실 불만',
+                   'okr': 'OKR',
                    history: '기록' }[t]}
               </button>
             ))}
@@ -1187,6 +1189,7 @@ function PropertyPanel({ property }) {
       {tab === 'review-rate' && isAgoda && <TabReviewRate propertyId={property.id} accent={accent} />}
       {tab === 'score-dist' && isAgoda && <TabScoreDist propertyId={property.id} accent={accent} />}
       {tab === 'complaints' && isAgoda && <TabComplaints propertyId={property.id} accent={accent} />}
+      {tab === 'okr' && isAgoda && <TabOKR propertyId={property.id} accent={accent} />}
 
       {/* 점수 저장 버튼 - 슈퍼호스트 탭일 때 */}
       {tab === 'superhost' && isAirbnb && (

@@ -312,12 +312,12 @@ function deltaColor(d) {
   if (d === null || d === 0) return 'var(--color-background-secondary, #f5f5f5)';
   const alpha = Math.min(0.15 + Math.abs(d) * 0.055, 0.88);
   return d > 0
-    ? `rgba(226,75,74,${alpha.toFixed(2)})`
-    : `rgba(15,110,86,${alpha.toFixed(2)})`;
+    ? `rgba(15,110,86,${alpha.toFixed(2)})`
+    : `rgba(226,75,74,${alpha.toFixed(2)})`;
 }
 function deltaTextColor(d) {
   if (!d || d === 0) return 'var(--color-text-tertiary)';
-  return d > 0 ? '#791F1F' : '#085041';
+  return d > 0 ? '#085041' : '#791F1F';
 }
 
 const VOC_CATS = ['청결', '서비스', '시설', '가격', '위치'];

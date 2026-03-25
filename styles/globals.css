@@ -1662,3 +1662,76 @@ label.ag-high { color: #0F6E56; }
   line-height: 1;
 }
 .voc-del:hover { opacity: 1; }
+
+/* ============================
+   OKR 탭
+   ============================ */
+.okr-top {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 20px;
+  align-items: center;
+  margin-bottom: 28px;
+}
+@media (max-width: 600px) {
+  .okr-top { grid-template-columns: 1fr; }
+}
+.okr-donut-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.okr-donut {
+  position: relative;
+  width: 160px;
+  height: 160px;
+}
+.okr-donut svg { display: block; }
+.okr-donut-label {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+.okr-donut-score {
+  font-size: 26px;
+  font-weight: 500;
+  color: var(--text-1);
+  line-height: 1;
+}
+.okr-donut-target {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 3px;
+}
+.okr-donut-legend {
+  display: flex;
+  gap: 12px;
+}
+.okr-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.okr-stat-card {
+  background: var(--color-background-secondary);
+  border-radius: var(--border-radius-md);
+  padding: 14px 16px;
+}
+.okr-stat-lbl {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  margin-bottom: 6px;
+}
+.okr-stat-val {
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+.okr-stat-sub {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  margin-top: 3px;
+}

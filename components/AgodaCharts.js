@@ -208,27 +208,25 @@ export function TabReviewRate({ propertyId, accent }) {
 // 레이아웃: 분포 차트(좌) + 증감 차트(우) 나란히
 // ────────────────────────────────────────────────────────────────────────
 
-// 구간 정의: [label, score_low, score_high]
-// 각 구간 = score_low 점 + score_high 점 합산 (예: 1~2점 = score_1 + score_2)
+// 구간 정의 (9개): score_1=1~2점구간, score_2=2~3점구간, ..., score_9=9~10점구간
+// DB 컬럼 score_1~score_9 를 그대로 사용 (score_10은 미사용)
 const BANDS = [
-  { label: '1~2점',  keys: ['score_1','score_2'],  color: '#E24B4A', bg: 'rgba(226,75,74,0.75)' },
-  { label: '2~3점',  keys: ['score_2','score_3'],  color: '#E24B4A', bg: 'rgba(226,75,74,0.60)' },
-  { label: '3~4점',  keys: ['score_3','score_4'],  color: '#BA7517', bg: 'rgba(186,117,23,0.65)' },
-  { label: '4~5점',  keys: ['score_4','score_5'],  color: '#BA7517', bg: 'rgba(186,117,23,0.50)' },
-  { label: '5~6점',  keys: ['score_5','score_6'],  color: '#BA7517', bg: 'rgba(186,117,23,0.38)' },
-  { label: '6~7점',  keys: ['score_6','score_7'],  color: '#0F6E56', bg: 'rgba(15,110,86,0.40)' },
-  { label: '7~8점',  keys: ['score_7','score_8'],  color: '#0F6E56', bg: 'rgba(15,110,86,0.52)' },
-  { label: '8~9점',  keys: ['score_8','score_9'],  color: '#0F6E56', bg: 'rgba(15,110,86,0.65)' },
-  { label: '9~10점', keys: ['score_9','score_10'], color: '#0F6E56', bg: 'rgba(15,110,86,0.80)' },
+  { label: '1~2점',  key: 'score_1', color: '#E24B4A', bg: 'rgba(226,75,74,0.80)' },
+  { label: '2~3점',  key: 'score_2', color: '#E24B4A', bg: 'rgba(226,75,74,0.60)' },
+  { label: '3~4점',  key: 'score_3', color: '#BA7517', bg: 'rgba(186,117,23,0.70)' },
+  { label: '4~5점',  key: 'score_4', color: '#BA7517', bg: 'rgba(186,117,23,0.55)' },
+  { label: '5~6점',  key: 'score_5', color: '#BA7517', bg: 'rgba(186,117,23,0.40)' },
+  { label: '6~7점',  key: 'score_6', color: '#0F6E56', bg: 'rgba(15,110,86,0.40)' },
+  { label: '7~8점',  key: 'score_7', color: '#0F6E56', bg: 'rgba(15,110,86,0.55)' },
+  { label: '8~9점',  key: 'score_8', color: '#0F6E56', bg: 'rgba(15,110,86,0.70)' },
+  { label: '9~10점', key: 'score_9', color: '#0F6E56', bg: 'rgba(15,110,86,0.85)' },
 ];
 
 function calcBandPcts(w) {
   if (!w) return Array(9).fill(0);
-  const total = [1,2,3,4,5,6,7,8,9,10].reduce((s,i) => s + (parseInt(w[`score_${i}`])||0), 0);
+  const total = BANDS.reduce((s, b) => s + (parseInt(w[b.key])||0), 0);
   return BANDS.map(b => {
-    // 구간은 두 점수의 평균 (중복 없이 분할하기 위해 각 key의 단독 비율)
-    // 예) 1~2점 구간 = score_1 건수만 사용 (score_1=1점대, score_2=2점대)
-    const cnt = parseInt(w[b.keys[0]]) || 0;
+    const cnt = parseInt(w[b.key]) || 0;
     return total > 0 ? parseFloat((cnt / total * 100).toFixed(1)) : 0;
   });
 }
@@ -242,8 +240,7 @@ export function TabScoreDist({ propertyId, accent }) {
     score_6:'', score_7:'', score_8:'', score_9:'', score_10:'',
   });
   const [status, setStatus] = useState('idle');
-  const barRef = useRef(null);
-  const lineRef = useRef(null);
+  const chartRef = useRef(null);
 
   const load = async () => {
     const r = await fetch(`/api/agoda-score-dist?property_id=${propertyId}`).then(x => x.json());
@@ -286,83 +283,75 @@ export function TabScoreDist({ propertyId, accent }) {
 
   const bandLabels = BANDS.map(b => b.label);
 
-  // 분포 막대 차트
-  useChart(barRef, () => ({
-    type: 'bar',
+  // 막대(분포%) + 선(전주 대비 증감) 혼합 차트
+  useChart(chartRef, () => ({
     data: {
       labels: bandLabels,
-      datasets: [{
-        label: '비율 (%)',
-        data: curPcts,
-        backgroundColor: BANDS.map(b => b.bg),
-        borderColor: BANDS.map(b => b.color),
-        borderWidth: 1.5,
-        borderRadius: 4,
-      }],
+      datasets: [
+        {
+          type: 'bar',
+          label: '비율 (%)',
+          data: curPcts,
+          backgroundColor: BANDS.map(b => b.bg),
+          borderColor: BANDS.map(b => b.color),
+          borderWidth: 1.5,
+          borderRadius: 4,
+          yAxisID: 'y',
+        },
+        ...(deltaPcts ? [{
+          type: 'line',
+          label: '전주 대비 증감 (%p)',
+          data: deltaPcts,
+          borderColor: '#888780',
+          segment: {
+            borderColor: ctx => {
+              const v = deltaPcts?.[ctx.p1DataIndex];
+              return v > 0 ? '#E24B4A' : v < 0 ? '#0F6E56' : '#888780';
+            },
+          },
+          pointBackgroundColor: deltaPcts.map(v => v > 0 ? '#E24B4A' : v < 0 ? '#0F6E56' : '#888780'),
+          pointRadius: 5,
+          borderWidth: 2,
+          tension: 0.3,
+          fill: false,
+          yAxisID: 'y2',
+        }] : []),
+      ],
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { display: false },
+        legend: { position: 'top', labels: { font: { size: 11 } } },
         tooltip: {
           callbacks: {
             label: ctx => {
-              const w = data[selectedWeekIdx];
-              const cnt = w ? parseInt(w[BANDS[ctx.dataIndex].keys[0]])||0 : 0;
-              return `${ctx.parsed.y}% (${cnt}건)`;
+              if (ctx.datasetIndex === 0) {
+                const w = data[selectedWeekIdx];
+                const cnt = w ? parseInt(w[BANDS[ctx.dataIndex]?.key])||0 : 0;
+                return `비율: ${ctx.parsed.y}% (${cnt}건)`;
+              }
+              return `증감: ${ctx.parsed.y > 0 ? '+' : ''}${ctx.parsed.y}%p`;
             },
           },
         },
       },
       scales: {
         y: {
+          type: 'linear',
+          position: 'left',
           beginAtZero: true,
           ticks: { callback: v => `${v}%` },
           grid: { color: 'rgba(128,128,128,0.1)' },
+          title: { display: true, text: '비율 (%)', font: { size: 11 } },
         },
-        x: { grid: { display: false }, ticks: { font: { size: 11 } } },
-      },
-    },
-  }), [selectedWeekIdx, data]);
-
-  // 증감 꺾은선 차트
-  useChart(lineRef, () => ({
-    type: 'line',
-    data: {
-      labels: bandLabels,
-      datasets: [{
-        label: '전주 대비 증감 (%p)',
-        data: deltaPcts,
-        borderColor: '#888780',
-        segment: {
-          borderColor: ctx => {
-            const v = deltaPcts?.[ctx.p1DataIndex];
-            return v > 0 ? '#E24B4A' : v < 0 ? '#0F6E56' : '#888780';
-          },
-        },
-        pointBackgroundColor: deltaPcts?.map(v => v > 0 ? '#E24B4A' : v < 0 ? '#0F6E56' : '#888780'),
-        pointRadius: 5,
-        borderWidth: 2,
-        tension: 0.3,
-        fill: false,
-      }],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: ctx => `${ctx.parsed.y > 0 ? '+' : ''}${ctx.parsed.y}%p`,
-          },
-        },
-      },
-      scales: {
-        y: {
+        y2: {
+          type: 'linear',
+          position: 'right',
           ticks: { callback: v => `${v > 0 ? '+' : ''}${v}%p` },
-          grid: { color: 'rgba(128,128,128,0.1)' },
+          grid: { display: false },
+          title: { display: true, text: '증감 (%p)', font: { size: 11 } },
         },
         x: { grid: { display: false }, ticks: { font: { size: 11 } } },
       },
@@ -382,14 +371,14 @@ export function TabScoreDist({ propertyId, accent }) {
               onChange={e => setForm(f => ({ ...f, week_start: e.target.value }))} />
           </div>
         </div>
-        <div className="ag-score-label">점수대별 건수 입력 (1점 ~ 10점)</div>
+        <div className="ag-score-label">구간별 건수 입력</div>
         <div className="ag-score-grid">
-          {[1,2,3,4,5,6,7,8,9,10].map(s => (
-            <div key={s} className="ag-score-cell">
-              <label className={s <= 2 ? 'ag-low' : s <= 6 ? 'ag-mid' : 'ag-high'}>{s}점</label>
+          {BANDS.map((b, i) => (
+            <div key={b.key} className="ag-score-cell">
+              <label style={{ color: b.color }}>{b.label}</label>
               <input type="number" min="0" placeholder="0"
-                value={form[`score_${s}`]}
-                onChange={e => setForm(f => ({ ...f, [`score_${s}`]: e.target.value }))} />
+                value={form[b.key]}
+                onChange={e => setForm(f => ({ ...f, [b.key]: e.target.value }))} />
             </div>
           ))}
         </div>
@@ -418,24 +407,15 @@ export function TabScoreDist({ propertyId, accent }) {
             ))}
           </div>
 
-          {/* 차트 2개 나란히 */}
-          <div className="ag-dual-chart">
-            <div className="ag-dual-chart-item">
-              <div className="ag-chart-label">점수 분포</div>
-              <div style={{ position: 'relative', height: 260 }}><canvas ref={barRef} /></div>
-            </div>
-            {deltaPcts ? (
-              <div className="ag-dual-chart-item">
-                <div className="ag-chart-label">전주 대비 증감</div>
-                <div style={{ position: 'relative', height: 260 }}><canvas ref={lineRef} /></div>
-              </div>
-            ) : (
-              <div className="ag-dual-chart-item ag-dual-chart-empty">
-                <div className="ag-chart-label">전주 대비 증감</div>
-                <div className="ag-no-prev">전주 데이터 입력 시 표시됩니다</div>
-              </div>
-            )}
+          {/* 혼합 차트: 막대(분포) + 선(증감) */}
+          <div style={{ position: 'relative', height: 300 }}>
+            <canvas ref={chartRef} />
           </div>
+          {!deltaPcts && (
+            <p style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 6, textAlign: 'center' }}>
+              전주 데이터 입력 시 증감 선이 표시됩니다
+            </p>
+          )}
 
           {/* 데이터 테이블 */}
           <div className="ag-table-wrap">
@@ -443,20 +423,20 @@ export function TabScoreDist({ propertyId, accent }) {
               <thead>
                 <tr>
                   <th>주차</th>
-                  {[1,2,3,4,5,6,7,8,9,10].map(s => <th key={s}>{s}점</th>)}
+                  {BANDS.map(b => <th key={b.key} style={{ color: b.color, fontSize: 11 }}>{b.label}</th>)}
                   <th>합계</th>
                   <th />
                 </tr>
               </thead>
               <tbody>
                 {[...data].reverse().map(d => {
-                  const total = [1,2,3,4,5,6,7,8,9,10].reduce((s,i) => s + (parseInt(d[`score_${i}`])||0), 0);
+                  const total = BANDS.reduce((s, b) => s + (parseInt(d[b.key])||0), 0);
                   return (
                     <tr key={d.id}>
                       <td>{fmtWeek(d.week_start)}</td>
-                      {[1,2,3,4,5,6,7,8,9,10].map(s => (
-                        <td key={s} style={{ color: s<=2?'#E24B4A':s<=6?'#BA7517':'inherit', fontSize:12 }}>
-                          {parseInt(d[`score_${s}`])||0}
+                      {BANDS.map(b => (
+                        <td key={b.key} style={{ color: b.color, fontSize: 12 }}>
+                          {parseInt(d[b.key])||0}
                         </td>
                       ))}
                       <td style={{ fontWeight: 500 }}>{total}</td>

@@ -69,36 +69,72 @@ export function TabReviewRate({ propertyId, accent }) {
   };
 
   const labels = data.map(d => fmtWeek(d.week_start));
+  const counts = data.map(d => d.review_count ?? 0);
   const rates = data.map(d =>
-    d.checkout_count > 0 ? parseFloat(((d.review_count / d.checkout_count) * 100).toFixed(1)) : 0
+    d.checkout_count > 0 ? parseFloat(((d.review_count / d.checkout_count) * 100).toFixed(1)) : null
   );
 
+  // 막대(리뷰 제출 건수) + 선(작성률%) 혼합 차트
   useChart(canvasRef, () => ({
-    type: 'bar',
     data: {
       labels,
-      datasets: [{
-        label: '리뷰 작성률 (%)',
-        data: rates,
-        backgroundColor: `${accent}33`,
-        borderColor: accent,
-        borderWidth: 2,
-        borderRadius: 5,
-      }],
+      datasets: [
+        {
+          type: 'bar',
+          label: '리뷰 제출 건수',
+          data: counts,
+          backgroundColor: `${accent}33`,
+          borderColor: accent,
+          borderWidth: 2,
+          borderRadius: 4,
+          yAxisID: 'y',
+        },
+        {
+          type: 'line',
+          label: '작성률 (%)',
+          data: rates,
+          borderColor: '#1F72B8',
+          backgroundColor: 'rgba(31,114,184,0.08)',
+          pointBackgroundColor: '#1F72B8',
+          pointRadius: 5,
+          borderWidth: 2,
+          tension: 0.3,
+          fill: false,
+          yAxisID: 'y2',
+        },
+      ],
     },
     options: {
       responsive: true,
+      interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: { label: ctx => `${ctx.parsed.y}%` } },
-        datalabels: { display: false },
+        legend: { position: 'top', labels: { font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            label: ctx =>
+              ctx.datasetIndex === 0
+                ? `리뷰 제출: ${ctx.parsed.y}건`
+                : `작성률: ${ctx.parsed.y}%`,
+          },
+        },
       },
       scales: {
         y: {
+          type: 'linear',
+          position: 'left',
           beginAtZero: true,
-          max: Math.max(...rates, 30) * 1.3,
-          ticks: { callback: v => `${v}%` },
+          title: { display: true, text: '리뷰 제출 건수', font: { size: 11 } },
+          ticks: { callback: v => `${v}건` },
           grid: { color: 'rgba(128,128,128,0.1)' },
+        },
+        y2: {
+          type: 'linear',
+          position: 'right',
+          beginAtZero: true,
+          max: 100,
+          title: { display: true, text: '작성률 (%)', font: { size: 11 } },
+          ticks: { callback: v => `${v}%` },
+          grid: { display: false },
         },
         x: { grid: { display: false } },
       },
@@ -108,7 +144,7 @@ export function TabReviewRate({ propertyId, accent }) {
   return (
     <div className="panel-body">
       <h3 className="section-title">리뷰 작성률 (주별)</h3>
-      <p className="ag-desc">리뷰 제출 건수 ÷ 아고다 체크아웃 수 × 100</p>
+      <p className="ag-desc">막대: 리뷰 제출 건수 · 선: 작성률(%) = 리뷰 제출 건수 ÷ 체크아웃 수 × 100</p>
 
       <form onSubmit={save} className="review-form" style={{ marginBottom: 24 }}>
         <div className="form-row">

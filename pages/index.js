@@ -786,7 +786,7 @@ function AgodaRateChart({ labels, rates }) {
     if (!canvasRef.current || !labels.length) return;
     const ctx = canvasRef.current.getContext('2d');
     if (canvasRef.current.__chart) canvasRef.current.__chart.destroy();
-    canvasRef.current.__chart = new Chart(ctx, {
+    canvasRef.current.__chart = new ChartJS(ctx, {
       type: 'bar',
       data: {
         labels,
@@ -856,7 +856,7 @@ function AgodaDistChart({ labels, weekly }) {
     const deltaData = ratioData.map((v, i) => i === 0 ? null : parseFloat((v - ratioData[i-1]).toFixed(1)));
     const deltaColors = deltaData.map(d => d === null ? 'transparent' : d > 0 ? '#E24B4A' : '#0F6E56');
 
-    canvasRef.current.__chart = new Chart(ctx, {
+    canvasRef.current.__chart = new ChartJS(ctx, {
       data: {
         labels,
         datasets: [
@@ -975,7 +975,7 @@ function AgodaComplaintsChart({ labels, room, bath, baselineRoom, baselineBath, 
       });
     }
 
-    canvasRef.current.__chart = new Chart(ctx, {
+    canvasRef.current.__chart = new ChartJS(ctx, {
       type: 'line',
       data: { labels, datasets },
       options: {

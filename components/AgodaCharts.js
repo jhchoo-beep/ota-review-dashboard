@@ -294,22 +294,45 @@ function calcBandPcts(w) {
   });
 }
 
+// 히트맵 셀 색상: 비율에 따라 amber 계열 진하게
+function heatColor(pct) {
+  if (pct <= 0)  return 'var(--color-background-secondary, #f5f5f5)';
+  if (pct < 5)   return '#FAEEDA';
+  if (pct < 10)  return '#FAC775';
+  if (pct < 20)  return '#EF9F27';
+  if (pct < 35)  return '#BA7517';
+  if (pct < 55)  return '#854F0B';
+  return '#633806';
+}
+function heatTextColor(pct) {
+  return pct >= 20 ? '#FAEEDA' : 'var(--color-text-primary)';
+}
+// 증감 셀 색상: 빨강(증가) / 초록(감소)
+function deltaColor(d) {
+  if (d === null || d === 0) return 'var(--color-background-secondary, #f5f5f5)';
+  const alpha = Math.min(0.15 + Math.abs(d) * 0.055, 0.88);
+  return d > 0
+    ? `rgba(226,75,74,${alpha.toFixed(2)})`
+    : `rgba(15,110,86,${alpha.toFixed(2)})`;
+}
+function deltaTextColor(d) {
+  if (!d || d === 0) return 'var(--color-text-tertiary)';
+  return d > 0 ? '#791F1F' : '#085041';
+}
+
 export function TabScoreDist({ propertyId, accent }) {
   const [data, setData] = useState([]);
-  const [selectedWeekIdx, setSelectedWeekIdx] = useState(null);
   const [form, setForm] = useState({
     week_start: '',
     score_1:'', score_2:'', score_3:'', score_4:'', score_5:'',
     score_6:'', score_7:'', score_8:'', score_9:'', score_10:'',
   });
   const [status, setStatus] = useState('idle');
-  const chartRef = useRef(null);
+  const [showCount, setShowCount] = useState(false); // false=비율, true=건수
 
   const load = async () => {
     const r = await fetch(`/api/agoda-score-dist?property_id=${propertyId}`).then(x => x.json());
-    const arr = Array.isArray(r) ? r : [];
-    setData(arr);
-    if (arr.length > 0) setSelectedWeekIdx(arr.length - 1);
+    setData(Array.isArray(r) ? r : []);
   };
 
   useEffect(() => { load(); }, [propertyId]);
@@ -337,94 +360,23 @@ export function TabScoreDist({ propertyId, accent }) {
     load();
   };
 
-  // 선택 주차 구간별 비율
-  const curPcts = calcBandPcts(data[selectedWeekIdx]);
-  // 전주 구간별 비율
-  const prevPcts = selectedWeekIdx > 0 ? calcBandPcts(data[selectedWeekIdx - 1]) : null;
-  // 전주 대비 증감
-  const deltaPcts = prevPcts ? curPcts.map((v, i) => parseFloat((v - prevPcts[i]).toFixed(1))) : null;
+  // 전체 주차의 구간별 비율 + 건수 계산
+  const allPcts = data.map(w => calcBandPcts(w));
+  const allCounts = data.map(w => BANDS.map(b => parseInt(w[b.key]) || 0));
 
-  const bandLabels = BANDS.map(b => b.label);
+  // 전주 대비 증감: delta[wi][bi] = 이번주 - 전주
+  const allDeltas = data.map((_, wi) =>
+    wi === 0 ? null : BANDS.map((_, bi) =>
+      parseFloat((allPcts[wi][bi] - allPcts[wi - 1][bi]).toFixed(1))
+    )
+  );
 
-  // 막대(분포%) + 선(전주 대비 증감) 혼합 차트
-  useChart(chartRef, () => ({
-    data: {
-      labels: bandLabels,
-      datasets: [
-        {
-          type: 'bar',
-          label: '비율 (%)',
-          data: curPcts,
-          backgroundColor: BANDS.map(b => b.bg),
-          borderColor: BANDS.map(b => b.color),
-          borderWidth: 1.5,
-          borderRadius: 4,
-          yAxisID: 'y',
-        },
-        ...(deltaPcts ? [{
-          type: 'line',
-          label: '전주 대비 증감 (%p)',
-          data: deltaPcts,
-          borderColor: '#888780',
-          segment: {
-            borderColor: ctx => {
-              const v = deltaPcts?.[ctx.p1DataIndex];
-              return v > 0 ? '#E24B4A' : v < 0 ? '#0F6E56' : '#888780';
-            },
-          },
-          pointBackgroundColor: deltaPcts.map(v => v > 0 ? '#E24B4A' : v < 0 ? '#0F6E56' : '#888780'),
-          pointRadius: 5,
-          borderWidth: 2,
-          tension: 0.3,
-          fill: false,
-          yAxisID: 'y2',
-        }] : []),
-      ],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: { mode: 'index', intersect: false },
-      plugins: {
-        legend: { position: 'top', labels: { font: { size: 11 } } },
-        tooltip: {
-          callbacks: {
-            label: ctx => {
-              if (ctx.datasetIndex === 0) {
-                const w = data[selectedWeekIdx];
-                const cnt = w ? parseInt(w[BANDS[ctx.dataIndex]?.key])||0 : 0;
-                return `비율: ${ctx.parsed.y}% (${cnt}건)`;
-              }
-              return `증감: ${ctx.parsed.y > 0 ? '+' : ''}${ctx.parsed.y}%p`;
-            },
-          },
-        },
-      },
-      scales: {
-        y: {
-          type: 'linear',
-          position: 'left',
-          beginAtZero: true,
-          ticks: { callback: v => `${v}%` },
-          grid: { color: 'rgba(128,128,128,0.1)' },
-          title: { display: true, text: '비율 (%)', font: { size: 11 } },
-        },
-        y2: {
-          type: 'linear',
-          position: 'right',
-          ticks: { callback: v => `${v > 0 ? '+' : ''}${v}%p` },
-          grid: { display: false },
-          title: { display: true, text: '증감 (%p)', font: { size: 11 } },
-        },
-        x: { grid: { display: false }, ticks: { font: { size: 11 } } },
-      },
-    },
-  }), [selectedWeekIdx, data]);
+  const weeks = data.map(d => fmtWeek(d.week_start));
 
   return (
     <div className="panel-body">
-      <h3 className="section-title">점수 분포 — 저점수 비율 변화</h3>
-      <p className="ag-desc">구간별 비율(%) 막대(좌) · 전주 대비 증감(%p) 선(우) · 빨강=증가 / 초록=감소</p>
+      <h3 className="section-title">점수 분포 히트맵</h3>
+      <p className="ag-desc">색이 진할수록 해당 구간 비율이 높음 · 하단 증감: 빨강=증가 / 초록=감소</p>
 
       <form onSubmit={save} className="review-form" style={{ marginBottom: 24 }}>
         <div className="form-row">
@@ -436,7 +388,7 @@ export function TabScoreDist({ propertyId, accent }) {
         </div>
         <div className="ag-score-label">구간별 건수 입력</div>
         <div className="ag-score-grid">
-          {BANDS.map((b, i) => (
+          {BANDS.map(b => (
             <div key={b.key} className="ag-score-cell">
               <label style={{ color: b.color }}>{b.label}</label>
               <input type="number" min="0" placeholder="0"
@@ -455,33 +407,117 @@ export function TabScoreDist({ propertyId, accent }) {
       </form>
 
       {data.length === 0 ? (
-        <div className="empty-state"><p>데이터를 입력하면 차트가 표시됩니다</p></div>
+        <div className="empty-state"><p>데이터를 입력하면 히트맵이 표시됩니다</p></div>
       ) : (
         <>
-          {/* 주차 선택 칩 */}
-          <div className="ag-week-chips">
-            {data.map((d, i) => (
-              <button key={d.id}
-                className={`ag-week-chip${selectedWeekIdx === i ? ' active' : ''}`}
-                style={selectedWeekIdx === i ? { background: accent, borderColor: accent, color: '#fff' } : {}}
-                onClick={() => setSelectedWeekIdx(i)}>
-                {fmtWeek(d.week_start)}
-              </button>
-            ))}
+          {/* 비율/건수 토글 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <button
+              className="ag-view-btn"
+              style={!showCount ? { background: accent, borderColor: accent, color: '#fff' } : {}}
+              onClick={() => setShowCount(false)}>비율 (%)</button>
+            <button
+              className="ag-view-btn"
+              style={showCount ? { background: accent, borderColor: accent, color: '#fff' } : {}}
+              onClick={() => setShowCount(true)}>건수</button>
+            <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--color-text-tertiary)' }}>
+              낮음
+              {['#FAEEDA','#FAC775','#EF9F27','#BA7517','#854F0B','#633806'].map((c,i) => (
+                <span key={i} style={{ display:'inline-block', width:14, height:10, background:c, borderRadius:2, marginLeft:3 }} />
+              ))}
+              높음
+            </span>
           </div>
 
-          {/* 혼합 차트: 막대(분포) + 선(증감) */}
-          <div style={{ position: 'relative', height: 300 }}>
-            <canvas ref={chartRef} />
-          </div>
-          {!deltaPcts && (
-            <p style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 6, textAlign: 'center' }}>
-              전주 데이터 입력 시 증감 선이 표시됩니다
-            </p>
-          )}
+          {/* 히트맵 2개 나란히: 좌=분포, 우=증감 */}
+          <div className="hm-dual">
 
-          {/* 데이터 테이블 */}
-          <div className="ag-table-wrap">
+            {/* 좌: 점수 분포 히트맵 */}
+            <div className="hm-dual-item">
+              <div className="ag-chart-label">점수 분포</div>
+              <div className="hm-scroll">
+                <table className="hm-table">
+                  <thead>
+                    <tr>
+                      <th className="hm-band-th">구간</th>
+                      {weeks.map((w, wi) => (
+                        <th key={wi} className="hm-week-th">
+                          W{wi + 1}<br />
+                          <span style={{ fontWeight: 400, fontSize: 10, color: 'var(--color-text-tertiary)' }}>{w.slice(5)}</span>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {BANDS.map((b, bi) => (
+                      <tr key={b.key}>
+                        <td className="hm-band-label" style={{ color: b.color }}>{b.label}</td>
+                        {data.map((_, wi) => {
+                          const pct = allPcts[wi][bi];
+                          const cnt = allCounts[wi][bi];
+                          const bg = heatColor(pct);
+                          const tc = heatTextColor(pct);
+                          const display = showCount ? `${cnt}건` : `${pct}%`;
+                          return (
+                            <td key={wi} className="hm-cell"
+                              style={{ background: bg, color: tc }}
+                              title={`${b.label} ${weeks[wi]}: ${pct}% (${cnt}건)`}>
+                              {display}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* 우: 전주 대비 증감 히트맵 */}
+            <div className="hm-dual-item">
+              <div className="ag-chart-label">전주 대비 증감 (%p)</div>
+              {data.length <= 1 ? (
+                <div className="hm-no-delta">전주 데이터 입력 시 표시됩니다</div>
+              ) : (
+                <div className="hm-scroll">
+                  <table className="hm-table">
+                    <thead>
+                      <tr>
+                        <th className="hm-band-th">구간</th>
+                        {weeks.slice(1).map((w, wi) => (
+                          <th key={wi} className="hm-week-th">
+                            W{wi + 1}→{wi + 2}<br />
+                            <span style={{ fontWeight: 400, fontSize: 10, color: 'var(--color-text-tertiary)' }}>{w.slice(5)}</span>
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {BANDS.map((b, bi) => (
+                        <tr key={b.key}>
+                          <td className="hm-band-label" style={{ color: b.color }}>{b.label}</td>
+                          {allDeltas.slice(1).map((deltas, wi) => {
+                            const d = deltas ? deltas[bi] : null;
+                            return (
+                              <td key={wi} className="hm-cell hm-delta-cell"
+                                style={{ background: deltaColor(d), color: deltaTextColor(d) }}
+                                title={`${b.label} 전주 대비: ${d > 0 ? '+' : ''}${d}%p`}>
+                                {d !== null ? `${d > 0 ? '+' : ''}${d}%p` : '—'}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+          </div>
+
+          {/* 기록 테이블 */}
+          <div className="ag-table-wrap" style={{ marginTop: 20 }}>
             <table className="history-table">
               <thead>
                 <tr>

@@ -7,7 +7,6 @@ import {
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { TabReviewRate, TabScoreDist, TabComplaints, TabOKR } from '../components/AgodaCharts';
-import { TabOKR } from '../components/AgodaOKR';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, BarController, PointElement, LineElement, Tooltip, Legend, Filler);
 

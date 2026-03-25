@@ -27,6 +27,7 @@ function useChart(canvasRef, buildConfig, deps) {
 // ────────────────────────────────────────────────────────────────────────
 export function TabReviewRate({ propertyId, accent }) {
   const [data, setData] = useState([]);
+  const [viewMode, setViewMode] = useState('weekly'); // 'weekly' | 'monthly'
   const [form, setForm] = useState({ week_start: '', review_count: '', checkout_count: '' });
   const [status, setStatus] = useState('idle');
   const canvasRef = useRef(null);
@@ -68,13 +69,23 @@ export function TabReviewRate({ propertyId, accent }) {
     load();
   };
 
-  const labels = data.map(d => fmtWeek(d.week_start));
-  const counts = data.map(d => d.review_count ?? 0);
-  const rates = data.map(d =>
-    d.checkout_count > 0 ? parseFloat(((d.review_count / d.checkout_count) * 100).toFixed(1)) : null
-  );
+  const isMonthly = viewMode === 'monthly';
+  const monthlyData = groupRateByMonth(data);
 
-  // 막대(리뷰 제출 건수) + 선(작성률%) 혼합 차트
+  const labels = isMonthly
+    ? monthlyData.map(d => d.month)
+    : data.map(d => fmtWeek(d.week_start));
+  const counts = isMonthly
+    ? monthlyData.map(d => d.review_count)
+    : data.map(d => d.review_count ?? 0);
+  const rates = isMonthly
+    ? monthlyData.map(d =>
+        d.checkout_count > 0 ? parseFloat(((d.review_count / d.checkout_count) * 100).toFixed(1)) : null
+      )
+    : data.map(d =>
+        d.checkout_count > 0 ? parseFloat(((d.review_count / d.checkout_count) * 100).toFixed(1)) : null
+      );
+
   useChart(canvasRef, () => ({
     data: {
       labels,
@@ -140,11 +151,11 @@ export function TabReviewRate({ propertyId, accent }) {
         x: { grid: { display: false } },
       },
     },
-  }), [data]);
+  }), [data, viewMode]);
 
   return (
     <div className="panel-body">
-      <h3 className="section-title">리뷰 작성률 (주별)</h3>
+      <h3 className="section-title">리뷰 작성률</h3>
       <p className="ag-desc">막대: 리뷰 제출 건수 · 선: 작성률(%) = 리뷰 제출 건수 ÷ 체크아웃 수 × 100</p>
 
       <form onSubmit={save} className="review-form" style={{ marginBottom: 24 }}>
@@ -178,25 +189,63 @@ export function TabReviewRate({ propertyId, accent }) {
         <div className="empty-state"><p>데이터를 입력하면 차트가 표시됩니다</p></div>
       ) : (
         <>
-          <div style={{ position: 'relative', height: 280 }}><canvas ref={canvasRef} /></div>
-          <div className="ag-table-wrap">
-            <table className="history-table">
-              <thead><tr><th>주차</th><th>리뷰 제출</th><th>체크아웃</th><th>작성률</th><th /></tr></thead>
-              <tbody>
-                {[...data].reverse().map(d => (
-                  <tr key={d.id}>
-                    <td>{fmtWeek(d.week_start)}</td>
-                    <td>{d.review_count ?? '—'}</td>
-                    <td>{d.checkout_count ?? '—'}</td>
-                    <td style={{ fontWeight: 500, color: accent }}>
-                      {d.checkout_count > 0 ? `${((d.review_count / d.checkout_count) * 100).toFixed(1)}%` : '—'}
-                    </td>
-                    <td><button className="delete-btn" onClick={() => del(d.id)}>×</button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          {/* 주별 / 월별 토글 */}
+          <div className="ag-view-toggle">
+            <button
+              className={`ag-view-btn${viewMode === 'weekly' ? ' active' : ''}`}
+              style={viewMode === 'weekly' ? { background: accent, borderColor: accent, color: '#fff' } : {}}
+              onClick={() => setViewMode('weekly')}>
+              주별
+            </button>
+            <button
+              className={`ag-view-btn${viewMode === 'monthly' ? ' active' : ''}`}
+              style={viewMode === 'monthly' ? { background: accent, borderColor: accent, color: '#fff' } : {}}
+              onClick={() => setViewMode('monthly')}>
+              월별
+            </button>
           </div>
+
+          <div style={{ position: 'relative', height: 280 }}><canvas ref={canvasRef} /></div>
+
+          {/* 데이터 테이블 */}
+          {isMonthly ? (
+            <div className="ag-table-wrap">
+              <table className="history-table">
+                <thead><tr><th>월</th><th>리뷰 제출 합계</th><th>체크아웃 합계</th><th>작성률</th></tr></thead>
+                <tbody>
+                  {[...monthlyData].reverse().map(d => (
+                    <tr key={d.month}>
+                      <td>{d.month}</td>
+                      <td>{d.review_count}</td>
+                      <td>{d.checkout_count}</td>
+                      <td style={{ fontWeight: 500, color: accent }}>
+                        {d.checkout_count > 0 ? `${((d.review_count / d.checkout_count) * 100).toFixed(1)}%` : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="ag-table-wrap">
+              <table className="history-table">
+                <thead><tr><th>주차</th><th>리뷰 제출</th><th>체크아웃</th><th>작성률</th><th /></tr></thead>
+                <tbody>
+                  {[...data].reverse().map(d => (
+                    <tr key={d.id}>
+                      <td>{fmtWeek(d.week_start)}</td>
+                      <td>{d.review_count ?? '—'}</td>
+                      <td>{d.checkout_count ?? '—'}</td>
+                      <td style={{ fontWeight: 500, color: accent }}>
+                        {d.checkout_count > 0 ? `${((d.review_count / d.checkout_count) * 100).toFixed(1)}%` : '—'}
+                      </td>
+                      <td><button className="delete-btn" onClick={() => del(d.id)}>×</button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </>
       )}
     </div>
@@ -208,6 +257,19 @@ export function TabReviewRate({ propertyId, accent }) {
 // 구간: 1~2, 2~3, 3~4, 4~5, 5~6, 6~7, 7~8, 8~9, 9~10 (9개)
 // 레이아웃: 분포 차트(좌) + 증감 차트(우) 나란히
 // ────────────────────────────────────────────────────────────────────────
+
+// 월별 리뷰 작성률 집계 유틸
+function groupRateByMonth(data) {
+  const map = {};
+  data.forEach(d => {
+    const key = d.week_start?.slice(0, 7); // 'YYYY-MM'
+    if (!key) return;
+    if (!map[key]) map[key] = { month: key, review_count: 0, checkout_count: 0 };
+    map[key].review_count += d.review_count || 0;
+    map[key].checkout_count += d.checkout_count || 0;
+  });
+  return Object.values(map).sort((a, b) => a.month.localeCompare(b.month));
+}
 
 // 구간 정의 (9개): score_1=1~2점구간, score_2=2~3점구간, ..., score_9=9~10점구간
 // DB 컬럼 score_1~score_9 를 그대로 사용 (score_10은 미사용)

@@ -204,8 +204,35 @@ export function TabReviewRate({ propertyId, accent }) {
 
 // ────────────────────────────────────────────────────────────────────────
 // 탭 2 ── 점수 분포
-// 노션 차트: 막대(점수대별 비율%) + 꺾은선(전주 대비 증감, 증가=빨강/감소=초록)
+// 구간: 1~2, 2~3, 3~4, 4~5, 5~6, 6~7, 7~8, 8~9, 9~10 (9개)
+// 레이아웃: 분포 차트(좌) + 증감 차트(우) 나란히
 // ────────────────────────────────────────────────────────────────────────
+
+// 구간 정의: [label, score_low, score_high]
+// 각 구간 = score_low 점 + score_high 점 합산 (예: 1~2점 = score_1 + score_2)
+const BANDS = [
+  { label: '1~2점',  keys: ['score_1','score_2'],  color: '#E24B4A', bg: 'rgba(226,75,74,0.75)' },
+  { label: '2~3점',  keys: ['score_2','score_3'],  color: '#E24B4A', bg: 'rgba(226,75,74,0.60)' },
+  { label: '3~4점',  keys: ['score_3','score_4'],  color: '#BA7517', bg: 'rgba(186,117,23,0.65)' },
+  { label: '4~5점',  keys: ['score_4','score_5'],  color: '#BA7517', bg: 'rgba(186,117,23,0.50)' },
+  { label: '5~6점',  keys: ['score_5','score_6'],  color: '#BA7517', bg: 'rgba(186,117,23,0.38)' },
+  { label: '6~7점',  keys: ['score_6','score_7'],  color: '#0F6E56', bg: 'rgba(15,110,86,0.40)' },
+  { label: '7~8점',  keys: ['score_7','score_8'],  color: '#0F6E56', bg: 'rgba(15,110,86,0.52)' },
+  { label: '8~9점',  keys: ['score_8','score_9'],  color: '#0F6E56', bg: 'rgba(15,110,86,0.65)' },
+  { label: '9~10점', keys: ['score_9','score_10'], color: '#0F6E56', bg: 'rgba(15,110,86,0.80)' },
+];
+
+function calcBandPcts(w) {
+  if (!w) return Array(9).fill(0);
+  const total = [1,2,3,4,5,6,7,8,9,10].reduce((s,i) => s + (parseInt(w[`score_${i}`])||0), 0);
+  return BANDS.map(b => {
+    // 구간은 두 점수의 평균 (중복 없이 분할하기 위해 각 key의 단독 비율)
+    // 예) 1~2점 구간 = score_1 건수만 사용 (score_1=1점대, score_2=2점대)
+    const cnt = parseInt(w[b.keys[0]]) || 0;
+    return total > 0 ? parseFloat((cnt / total * 100).toFixed(1)) : 0;
+  });
+}
+
 export function TabScoreDist({ propertyId, accent }) {
   const [data, setData] = useState([]);
   const [selectedWeekIdx, setSelectedWeekIdx] = useState(null);
@@ -250,63 +277,51 @@ export function TabScoreDist({ propertyId, accent }) {
     load();
   };
 
-  // 선택된 주차의 점수 분포 계산
-  const distData = selectedWeekIdx !== null && data[selectedWeekIdx]
-    ? (() => {
-        const w = data[selectedWeekIdx];
-        const total = [1,2,3,4,5,6,7,8,9,10].reduce((s,i) => s + (parseInt(w[`score_${i}`])||0), 0);
-        return [1,2,3,4,5,6,7,8,9,10].map(i => ({
-          score: i,
-          count: parseInt(w[`score_${i}`]) || 0,
-          pct: total > 0 ? parseFloat(((parseInt(w[`score_${i}`])||0) / total * 100).toFixed(1)) : 0,
-        }));
-      })()
-    : [];
+  // 선택 주차 구간별 비율
+  const curPcts = calcBandPcts(data[selectedWeekIdx]);
+  // 전주 구간별 비율
+  const prevPcts = selectedWeekIdx > 0 ? calcBandPcts(data[selectedWeekIdx - 1]) : null;
+  // 전주 대비 증감
+  const deltaPcts = prevPcts ? curPcts.map((v, i) => parseFloat((v - prevPcts[i]).toFixed(1))) : null;
 
-  // 전주 대비 증감 계산
-  const prevData = selectedWeekIdx !== null && selectedWeekIdx > 0 && data[selectedWeekIdx - 1]
-    ? (() => {
-        const pw = data[selectedWeekIdx - 1];
-        const pt = [1,2,3,4,5,6,7,8,9,10].reduce((s,i) => s + (parseInt(pw[`score_${i}`])||0), 0);
-        return [1,2,3,4,5,6,7,8,9,10].map(i =>
-          pt > 0 ? parseFloat(((parseInt(pw[`score_${i}`])||0) / pt * 100).toFixed(1)) : 0
-        );
-      })()
-    : null;
+  const bandLabels = BANDS.map(b => b.label);
 
-  const deltaData = prevData
-    ? distData.map((d, i) => parseFloat((d.pct - prevData[i]).toFixed(1)))
-    : null;
-
-  // 막대 차트
+  // 분포 막대 차트
   useChart(barRef, () => ({
     type: 'bar',
     data: {
-      labels: [1,2,3,4,5,6,7,8,9,10].map(i => `${i}점`),
+      labels: bandLabels,
       datasets: [{
         label: '비율 (%)',
-        data: distData.map(d => d.pct),
-        backgroundColor: distData.map(d =>
-          d.score <= 4 ? 'rgba(226,75,74,0.7)' :
-          d.score <= 6 ? 'rgba(186,117,23,0.5)' :
-          'rgba(15,110,86,0.5)'
-        ),
-        borderColor: distData.map(d =>
-          d.score <= 4 ? '#E24B4A' : d.score <= 6 ? '#BA7517' : '#0F6E56'
-        ),
+        data: curPcts,
+        backgroundColor: BANDS.map(b => b.bg),
+        borderColor: BANDS.map(b => b.color),
         borderWidth: 1.5,
         borderRadius: 4,
       }],
     },
     options: {
       responsive: true,
+      maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
-        tooltip: { callbacks: { label: ctx => `${ctx.parsed.y}% (${distData[ctx.dataIndex]?.count}건)` } },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const w = data[selectedWeekIdx];
+              const cnt = w ? parseInt(w[BANDS[ctx.dataIndex].keys[0]])||0 : 0;
+              return `${ctx.parsed.y}% (${cnt}건)`;
+            },
+          },
+        },
       },
       scales: {
-        y: { beginAtZero: true, ticks: { callback: v => `${v}%` }, grid: { color: 'rgba(128,128,128,0.1)' } },
-        x: { grid: { display: false } },
+        y: {
+          beginAtZero: true,
+          ticks: { callback: v => `${v}%` },
+          grid: { color: 'rgba(128,128,128,0.1)' },
+        },
+        x: { grid: { display: false }, ticks: { font: { size: 11 } } },
       },
     },
   }), [selectedWeekIdx, data]);
@@ -315,18 +330,18 @@ export function TabScoreDist({ propertyId, accent }) {
   useChart(lineRef, () => ({
     type: 'line',
     data: {
-      labels: [1,2,3,4,5,6,7,8,9,10].map(i => `${i}점`),
+      labels: bandLabels,
       datasets: [{
         label: '전주 대비 증감 (%p)',
-        data: deltaData,
+        data: deltaPcts,
         borderColor: '#888780',
         segment: {
           borderColor: ctx => {
-            const v = deltaData?.[ctx.p1DataIndex];
+            const v = deltaPcts?.[ctx.p1DataIndex];
             return v > 0 ? '#E24B4A' : v < 0 ? '#0F6E56' : '#888780';
           },
         },
-        pointBackgroundColor: deltaData?.map(v => v > 0 ? '#E24B4A' : v < 0 ? '#0F6E56' : '#888780'),
+        pointBackgroundColor: deltaPcts?.map(v => v > 0 ? '#E24B4A' : v < 0 ? '#0F6E56' : '#888780'),
         pointRadius: 5,
         borderWidth: 2,
         tension: 0.3,
@@ -335,16 +350,21 @@ export function TabScoreDist({ propertyId, accent }) {
     },
     options: {
       responsive: true,
+      maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
-        tooltip: { callbacks: { label: ctx => `${ctx.parsed.y > 0 ? '+' : ''}${ctx.parsed.y}%p` } },
+        tooltip: {
+          callbacks: {
+            label: ctx => `${ctx.parsed.y > 0 ? '+' : ''}${ctx.parsed.y}%p`,
+          },
+        },
       },
       scales: {
         y: {
           ticks: { callback: v => `${v > 0 ? '+' : ''}${v}%p` },
           grid: { color: 'rgba(128,128,128,0.1)' },
         },
-        x: { grid: { display: false } },
+        x: { grid: { display: false }, ticks: { font: { size: 11 } } },
       },
     },
   }), [selectedWeekIdx, data]);
@@ -352,7 +372,7 @@ export function TabScoreDist({ propertyId, accent }) {
   return (
     <div className="panel-body">
       <h3 className="section-title">점수 분포 — 저점수 비율 변화</h3>
-      <p className="ag-desc">각 점수대(1~10점) 비율(%) · 전주 대비 증감(%p) · 빨강=증가 / 초록=감소</p>
+      <p className="ag-desc">구간별 비율(%) 막대(좌) · 전주 대비 증감(%p) 선(우) · 빨강=증가 / 초록=감소</p>
 
       <form onSubmit={save} className="review-form" style={{ marginBottom: 24 }}>
         <div className="form-row">
@@ -366,7 +386,7 @@ export function TabScoreDist({ propertyId, accent }) {
         <div className="ag-score-grid">
           {[1,2,3,4,5,6,7,8,9,10].map(s => (
             <div key={s} className="ag-score-cell">
-              <label className={s <= 4 ? 'ag-low' : s <= 6 ? 'ag-mid' : 'ag-high'}>{s}점</label>
+              <label className={s <= 2 ? 'ag-low' : s <= 6 ? 'ag-mid' : 'ag-high'}>{s}점</label>
               <input type="number" min="0" placeholder="0"
                 value={form[`score_${s}`]}
                 onChange={e => setForm(f => ({ ...f, [`score_${s}`]: e.target.value }))} />
@@ -398,17 +418,24 @@ export function TabScoreDist({ propertyId, accent }) {
             ))}
           </div>
 
-          {/* 막대: 점수 분포 */}
-          <div className="ag-chart-label">점수 분포</div>
-          <div style={{ position: 'relative', height: 240 }}><canvas ref={barRef} /></div>
-
-          {/* 꺾은선: 전주 대비 증감 */}
-          {deltaData && (
-            <>
-              <div className="ag-chart-label" style={{ marginTop: 20 }}>전주 대비 증감</div>
-              <div style={{ position: 'relative', height: 200 }}><canvas ref={lineRef} /></div>
-            </>
-          )}
+          {/* 차트 2개 나란히 */}
+          <div className="ag-dual-chart">
+            <div className="ag-dual-chart-item">
+              <div className="ag-chart-label">점수 분포</div>
+              <div style={{ position: 'relative', height: 260 }}><canvas ref={barRef} /></div>
+            </div>
+            {deltaPcts ? (
+              <div className="ag-dual-chart-item">
+                <div className="ag-chart-label">전주 대비 증감</div>
+                <div style={{ position: 'relative', height: 260 }}><canvas ref={lineRef} /></div>
+              </div>
+            ) : (
+              <div className="ag-dual-chart-item ag-dual-chart-empty">
+                <div className="ag-chart-label">전주 대비 증감</div>
+                <div className="ag-no-prev">전주 데이터 입력 시 표시됩니다</div>
+              </div>
+            )}
+          </div>
 
           {/* 데이터 테이블 */}
           <div className="ag-table-wrap">
@@ -428,7 +455,7 @@ export function TabScoreDist({ propertyId, accent }) {
                     <tr key={d.id}>
                       <td>{fmtWeek(d.week_start)}</td>
                       {[1,2,3,4,5,6,7,8,9,10].map(s => (
-                        <td key={s} style={{ color: s<=4?'#E24B4A':s<=6?'#BA7517':'inherit', fontSize:12 }}>
+                        <td key={s} style={{ color: s<=2?'#E24B4A':s<=6?'#BA7517':'inherit', fontSize:12 }}>
                           {parseInt(d[`score_${s}`])||0}
                         </td>
                       ))}

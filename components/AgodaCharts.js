@@ -984,3 +984,206 @@ export function TabComplaints({ propertyId, accent }) {
     </div>
   );
 }
+
+// ────────────────────────────────────────────────────────────────────────
+// OKR 탭 ── 9.0점 달성 트래커
+// 도넛(진행률) + 지표카드 + 진행바 + 0.1점 단계 테이블(슬라이더)
+// ────────────────────────────────────────────────────────────────────────
+export function TabOKR({ propertyId, accent }) {
+  const [latest, setLatest] = useState(null);
+  const [newAvg, setNewAvg] = useState(9.5);
+  const TARGET = 9.0;
+  const BASE = 8.0;
+
+  useEffect(() => {
+    (async () => {
+      const map = await fetch('/api/reviews/latest').then(r => r.json());
+      setLatest(map[propertyId] ?? null);
+    })();
+  }, [propertyId]);
+
+  if (!latest) return (
+    <div className="panel-body">
+      <div className="empty-state"><p>대시보드 탭에서 점수를 입력하면 OKR 트래커가 활성화됩니다</p></div>
+    </div>
+  );
+
+  const curScore = parseFloat(latest.overall_score);
+  const curCount = parseInt(latest.review_count) || 0;
+  const achieved = curScore >= TARGET;
+
+  // 도넛 계산 (8.0 → 9.0 기준)
+  const progPct = Math.min(Math.max((curScore - BASE) / (TARGET - BASE), 0), 1);
+  const R = 62;
+  const CIRC = 2 * Math.PI * R;
+  const fillDash = (CIRC * progPct).toFixed(1);
+  const gapDash = (CIRC * (1 - progPct)).toFixed(1);
+  const restDash = (CIRC * (1 - progPct)).toFixed(1);
+  const restOffset = (-CIRC * progPct).toFixed(1);
+
+  // 0.1점 단계별 필요 리뷰 계산
+  const steps = [];
+  for (let i = Math.round(curScore * 10) + 1; i <= 90; i++) {
+    steps.push(i / 10);
+  }
+  function calcNeeded(target) {
+    if (curScore >= target) return 0;
+    if (newAvg <= target) return Infinity;
+    return Math.ceil((target * curCount - curScore * curCount) / (newAvg - target));
+  }
+
+  return (
+    <div className="panel-body">
+      <h3 className="section-title">OKR 트래커 — 9.0점 달성</h3>
+      <p className="ag-desc">대시보드 탭 최신 기록 기준 자동 연동 · 기준선 8.0점 → 목표 9.0점</p>
+
+      {/* 상단: 도넛 + 지표카드 */}
+      <div className="okr-top">
+
+        {/* 도넛 */}
+        <div className="okr-donut-wrap">
+          <div className="okr-donut">
+            <svg width="160" height="160" viewBox="0 0 160 160">
+              <circle cx="80" cy="80" r={R} fill="none"
+                stroke="var(--color-background-secondary)" strokeWidth="18" />
+              {/* 달성 호 */}
+              <circle cx="80" cy="80" r={R} fill="none"
+                stroke={achieved ? '#1D9E75' : accent}
+                strokeWidth="18"
+                strokeDasharray={`${fillDash} ${CIRC}`}
+                strokeLinecap="round"
+                style={{ transform: 'rotate(-90deg)', transformOrigin: '80px 80px' }} />
+              {/* 잔여 호 */}
+              {!achieved && (
+                <circle cx="80" cy="80" r={R} fill="none"
+                  stroke="#FAEEDA"
+                  strokeWidth="18"
+                  strokeDasharray={`${restDash} ${CIRC}`}
+                  strokeDashoffset={restOffset}
+                  style={{ transform: 'rotate(-90deg)', transformOrigin: '80px 80px' }} />
+              )}
+            </svg>
+            <div className="okr-donut-label">
+              <div className="okr-donut-score">{curScore.toFixed(1)}</div>
+              <div className="okr-donut-target">/ 9.0 목표</div>
+            </div>
+          </div>
+          <div className="okr-donut-legend">
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--color-text-secondary)' }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: achieved ? '#1D9E75' : accent, display: 'inline-block' }} />
+              달성 {Math.round(progPct * 100)}%
+            </span>
+            {!achieved && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--color-text-tertiary)' }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#FAEEDA', display: 'inline-block' }} />
+                잔여 {Math.round((1 - progPct) * 100)}%
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* 지표 카드 */}
+        <div className="okr-stat-grid">
+          <div className="okr-stat-card">
+            <div className="okr-stat-lbl">현재 점수</div>
+            <div className="okr-stat-val">{curScore.toFixed(1)}</div>
+            <div className="okr-stat-sub">{achieved ? '목표 달성!' : `목표까지 ${(TARGET - curScore).toFixed(1)}점`}</div>
+          </div>
+          <div className="okr-stat-card">
+            <div className="okr-stat-lbl">누적 리뷰</div>
+            <div className="okr-stat-val">{curCount.toLocaleString()}</div>
+            <div className="okr-stat-sub">개</div>
+          </div>
+          <div className="okr-stat-card">
+            <div className="okr-stat-lbl">OKR 목표</div>
+            <div className="okr-stat-val">9.0</div>
+            <div className="okr-stat-sub">{achieved ? <span style={{ color: '#1D9E75', fontWeight: 500 }}>달성 완료</span> : 'Agoda 기준'}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* 진행 바 */}
+      {!achieved && (
+        <div style={{ marginBottom: 24 }}>
+          <div className="ag-chart-label">9.0점까지 진행률 (기준 8.0점)</div>
+          <div style={{ height: 10, background: 'var(--color-background-secondary)', borderRadius: 99, overflow: 'hidden', marginBottom: 5 }}>
+            <div style={{ height: '100%', width: `${Math.round(progPct * 100)}%`, background: accent, borderRadius: 99, transition: 'width .5s' }} />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--color-text-tertiary)' }}>
+            <span>기준 8.0점</span>
+            <span style={{ fontWeight: 500, color: accent }}>현재 {curScore.toFixed(1)}점</span>
+            <span>목표 9.0점</span>
+          </div>
+        </div>
+      )}
+
+      {/* 슬라이더 */}
+      {!achieved && (
+        <div style={{ marginBottom: 20 }}>
+          <div className="ag-chart-label">신규 리뷰 평균 점수 가정</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <input type="range" min="9.0" max="10.0" step="0.1"
+              value={newAvg}
+              onChange={e => setNewAvg(parseFloat(e.target.value))}
+              style={{ flex: 1 }} />
+            <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--color-text-primary)', minWidth: 36 }}>
+              {newAvg.toFixed(1)}점
+            </span>
+          </div>
+          <p style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 4 }}>
+            슬라이더로 조정하면 아래 필요 리뷰 수가 실시간으로 바뀝니다
+          </p>
+        </div>
+      )}
+
+      {/* 0.1점 단계 테이블 */}
+      {!achieved ? (
+        <>
+          <div className="ag-chart-label">0.1점 단계별 필요 리뷰 수</div>
+          <div className="ag-table-wrap">
+            <table className="history-table">
+              <thead>
+                <tr>
+                  <th>목표 점수</th>
+                  <th>추가 필요 리뷰</th>
+                  <th>달성 진행</th>
+                </tr>
+              </thead>
+              <tbody>
+                {steps.map(target => {
+                  const needed = calcNeeded(target);
+                  const pct = Math.round(((curScore - BASE) / (target - BASE)) * 100);
+                  const isInfinity = needed === Infinity;
+                  return (
+                    <tr key={target}>
+                      <td style={{ fontWeight: 500 }}>{target.toFixed(1)}점</td>
+                      <td style={{ fontWeight: 500, color: isInfinity ? 'var(--color-text-tertiary)' : 'var(--color-text-primary)' }}>
+                        {isInfinity ? '계산 불가 (평균 점수 높이세요)' : `${needed.toLocaleString()}개`}
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ flex: 1, height: 5, background: 'var(--color-background-secondary)', borderRadius: 99, overflow: 'hidden', maxWidth: 120 }}>
+                            <div style={{ height: '100%', width: `${Math.min(pct, 100)}%`, background: accent, borderRadius: 99 }} />
+                          </div>
+                          <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)', minWidth: 28 }}>{Math.min(pct, 100)}%</span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div style={{ background: 'var(--color-background-secondary)', borderRadius: 8, padding: '10px 14px', fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 12, lineHeight: 1.7 }}>
+            계산 방식: 목표 점수 × (현재 리뷰 수 + 추가 리뷰) ≥ 현재 평균 × 현재 리뷰 수 + 추가 리뷰 × 신규 평균
+          </div>
+        </>
+      ) : (
+        <div style={{ background: '#E1F5EE', border: '1px solid #9FE1CB', borderRadius: 10, padding: '20px 24px', textAlign: 'center' }}>
+          <div style={{ fontSize: 22, fontWeight: 500, color: '#085041', marginBottom: 6 }}>목표 달성!</div>
+          <div style={{ fontSize: 13, color: '#0F6E56' }}>현재 {curScore.toFixed(1)}점 · 누적 리뷰 {curCount.toLocaleString()}개</div>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -454,11 +454,26 @@ export function TabScoreDist({ propertyId, accent }) {
 }
 
 // ────────────────────────────────────────────────────────────────────────
-// 탭 3 ── 정비/욕실 불만 건수
-// 노션 차트: 꺾은선 2개 + 1~2월 평균 기준선(점선) + 메모 주석
+// 탭 3 ── 정비/욕실 불만 건수 (주별 입력 + 주별/월별 전환 뷰)
 // ────────────────────────────────────────────────────────────────────────
+
+// 월별 집계 유틸: 주 데이터를 월 단위로 합산
+function groupByMonth(data) {
+  const map = {};
+  data.forEach(d => {
+    const key = d.week_start?.slice(0, 7); // 'YYYY-MM'
+    if (!key) return;
+    if (!map[key]) map[key] = { month: key, room: 0, bath: 0, memos: [] };
+    map[key].room += d.room_complaints || 0;
+    map[key].bath += d.bathroom_complaints || 0;
+    if (d.memo) map[key].memos.push(d.memo);
+  });
+  return Object.values(map).sort((a, b) => a.month.localeCompare(b.month));
+}
+
 export function TabComplaints({ propertyId, accent }) {
   const [data, setData] = useState([]);
+  const [viewMode, setViewMode] = useState('weekly'); // 'weekly' | 'monthly'
   const [form, setForm] = useState({ week_start: '', room_complaints: '', bathroom_complaints: '', memo: '' });
   const [status, setStatus] = useState('idle');
   const canvasRef = useRef(null);
@@ -492,16 +507,46 @@ export function TabComplaints({ propertyId, accent }) {
     load();
   };
 
-  // 1~2월 데이터로 기준선 계산
+  // 1~2월 데이터로 기준선 계산 (주별 평균)
   const baseline = data.filter(d => { const m = parseInt(d.week_start?.slice(5,7)); return m===1||m===2; });
   const baselineRoom = baseline.length > 0
     ? Math.round(baseline.reduce((s,d) => s+(d.room_complaints||0),0) / baseline.length * 10) / 10 : null;
   const baselineBath = baseline.length > 0
     ? Math.round(baseline.reduce((s,d) => s+(d.bathroom_complaints||0),0) / baseline.length * 10) / 10 : null;
 
-  const labels = data.map(d => fmtWeek(d.week_start));
-  const room = data.map(d => d.room_complaints ?? 0);
-  const bath = data.map(d => d.bathroom_complaints ?? 0);
+  // 월별 기준선: 주별 기준선 × 해당 월의 주 수 (1~2월 월 합산 평균)
+  const monthlyBaseline = (() => {
+    if (!baseline.length) return { room: null, bath: null };
+    const mMap = {};
+    baseline.forEach(d => {
+      const key = d.week_start?.slice(0,7);
+      if (!mMap[key]) mMap[key] = { room: 0, bath: 0 };
+      mMap[key].room += d.room_complaints || 0;
+      mMap[key].bath += d.bathroom_complaints || 0;
+    });
+    const months = Object.values(mMap);
+    return {
+      room: Math.round(months.reduce((s,m) => s+m.room,0) / months.length * 10) / 10,
+      bath: Math.round(months.reduce((s,m) => s+m.bath,0) / months.length * 10) / 10,
+    };
+  })();
+
+  // 현재 뷰 모드에 따른 데이터
+  const isMonthly = viewMode === 'monthly';
+  const monthlyData = groupByMonth(data);
+
+  const labels = isMonthly
+    ? monthlyData.map(d => d.month)
+    : data.map(d => fmtWeek(d.week_start));
+  const room = isMonthly
+    ? monthlyData.map(d => d.room)
+    : data.map(d => d.room_complaints ?? 0);
+  const bath = isMonthly
+    ? monthlyData.map(d => d.bath)
+    : data.map(d => d.bathroom_complaints ?? 0);
+  const curBaseline = isMonthly
+    ? { room: monthlyBaseline.room, bath: monthlyBaseline.bath }
+    : { room: baselineRoom, bath: baselineBath };
 
   useChart(canvasRef, () => {
     const datasets = [
@@ -528,15 +573,15 @@ export function TabComplaints({ propertyId, accent }) {
         borderWidth: 2,
       },
     ];
-    if (baselineRoom != null) datasets.push({
-      label: `객실 기준선 (${baselineRoom}건)`,
-      data: Array(labels.length).fill(baselineRoom),
+    if (curBaseline.room != null) datasets.push({
+      label: `객실 기준선 (${curBaseline.room}건)`,
+      data: Array(labels.length).fill(curBaseline.room),
       borderColor: '#E84393', borderWidth: 1.5, borderDash: [6,4],
       pointRadius: 0, fill: false,
     });
-    if (baselineBath != null) datasets.push({
-      label: `욕실 기준선 (${baselineBath}건)`,
-      data: Array(labels.length).fill(baselineBath),
+    if (curBaseline.bath != null) datasets.push({
+      label: `욕실 기준선 (${curBaseline.bath}건)`,
+      data: Array(labels.length).fill(curBaseline.bath),
       borderColor: '#1F72B8', borderWidth: 1.5, borderDash: [6,4],
       pointRadius: 0, fill: false,
     });
@@ -551,6 +596,10 @@ export function TabComplaints({ propertyId, accent }) {
           tooltip: {
             callbacks: {
               afterBody: (items) => {
+                if (isMonthly) {
+                  const memos = monthlyData[items[0]?.dataIndex]?.memos;
+                  return memos?.length ? [`메모: ${memos.join(' / ')}`] : [];
+                }
                 const idx = items[0]?.dataIndex;
                 return data[idx]?.memo ? [`메모: ${data[idx].memo}`] : [];
               },
@@ -563,12 +612,12 @@ export function TabComplaints({ propertyId, accent }) {
         },
       },
     };
-  }, [data]);
+  }, [data, viewMode]);
 
   return (
     <div className="panel-body">
       <h3 className="section-title">정비 / 욕실 불만 건수 추이</h3>
-      <p className="ag-desc">키워드 기반 불만 건수 추적 · 점선 = 1~2월 평균 기준선</p>
+      <p className="ag-desc">주별 입력 · 주별/월별 전환 가능 · 점선 = 1~2월 평균 기준선</p>
 
       <form onSubmit={save} className="review-form" style={{ marginBottom: 24 }}>
         <div className="form-row">
@@ -602,47 +651,94 @@ export function TabComplaints({ propertyId, accent }) {
         {status === 'error' && <p className="form-status error">✕ 저장 실패</p>}
       </form>
 
-      {baselineRoom != null && (
-        <div className="ag-baseline-info">
-          기준선 (1~2월 평균) — 객실: <strong>{baselineRoom}건</strong> · 욕실: <strong>{baselineBath}건</strong>
-        </div>
-      )}
-
       {data.length === 0 ? (
         <div className="empty-state"><p>데이터를 입력하면 차트가 표시됩니다</p></div>
       ) : (
         <>
-          <div style={{ position: 'relative', height: 300 }}><canvas ref={canvasRef} /></div>
+          {/* 주별 / 월별 토글 */}
+          <div className="ag-view-toggle">
+            <button
+              className={`ag-view-btn${viewMode === 'weekly' ? ' active' : ''}`}
+              style={viewMode === 'weekly' ? { background: accent, borderColor: accent, color: '#fff' } : {}}
+              onClick={() => setViewMode('weekly')}>
+              주별
+            </button>
+            <button
+              className={`ag-view-btn${viewMode === 'monthly' ? ' active' : ''}`}
+              style={viewMode === 'monthly' ? { background: accent, borderColor: accent, color: '#fff' } : {}}
+              onClick={() => setViewMode('monthly')}>
+              월별
+            </button>
+          </div>
 
-          {/* 메모 목록 */}
-          {data.some(d => d.memo) && (
-            <div className="ag-memo-list">
-              {data.filter(d => d.memo).map(d => (
-                <div key={d.id} className="ag-memo-item">
-                  <span className="ag-memo-week">{fmtWeek(d.week_start)}</span>
-                  <span className="ag-memo-text">{d.memo}</span>
-                </div>
-              ))}
+          {curBaseline.room != null && (
+            <div className="ag-baseline-info">
+              기준선 (1~2월 {isMonthly ? '월 합산' : '주별'} 평균) —
+              객실: <strong>{curBaseline.room}건</strong> · 욕실: <strong>{curBaseline.bath}건</strong>
             </div>
           )}
 
+          <div style={{ position: 'relative', height: 300 }}><canvas ref={canvasRef} /></div>
+
+          {/* 메모 목록 */}
+          {isMonthly
+            ? monthlyData.some(d => d.memos.length > 0) && (
+                <div className="ag-memo-list">
+                  {monthlyData.filter(d => d.memos.length).map(d => (
+                    <div key={d.month} className="ag-memo-item">
+                      <span className="ag-memo-week">{d.month}</span>
+                      <span className="ag-memo-text">{d.memos.join(' / ')}</span>
+                    </div>
+                  ))}
+                </div>
+              )
+            : data.some(d => d.memo) && (
+                <div className="ag-memo-list">
+                  {data.filter(d => d.memo).map(d => (
+                    <div key={d.id} className="ag-memo-item">
+                      <span className="ag-memo-week">{fmtWeek(d.week_start)}</span>
+                      <span className="ag-memo-text">{d.memo}</span>
+                    </div>
+                  ))}
+                </div>
+              )
+          }
+
           {/* 데이터 테이블 */}
-          <div className="ag-table-wrap">
-            <table className="history-table">
-              <thead><tr><th>주차</th><th>객실 정비</th><th>욕실 청결</th><th>메모</th><th /></tr></thead>
-              <tbody>
-                {[...data].reverse().map(d => (
-                  <tr key={d.id}>
-                    <td>{fmtWeek(d.week_start)}</td>
-                    <td style={{ color: '#E84393', fontWeight: 500 }}>{d.room_complaints ?? 0}건</td>
-                    <td style={{ color: '#1F72B8', fontWeight: 500 }}>{d.bathroom_complaints ?? 0}건</td>
-                    <td style={{ fontSize: 12, color: 'var(--text-2)' }}>{d.memo || '—'}</td>
-                    <td><button className="delete-btn" onClick={() => del(d.id)}>×</button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {isMonthly ? (
+            <div className="ag-table-wrap">
+              <table className="history-table">
+                <thead><tr><th>월</th><th>객실 정비 합계</th><th>욕실 청결 합계</th><th>메모</th></tr></thead>
+                <tbody>
+                  {[...monthlyData].reverse().map(d => (
+                    <tr key={d.month}>
+                      <td>{d.month}</td>
+                      <td style={{ color: '#E84393', fontWeight: 500 }}>{d.room}건</td>
+                      <td style={{ color: '#1F72B8', fontWeight: 500 }}>{d.bath}건</td>
+                      <td style={{ fontSize: 12, color: 'var(--text-2)' }}>{d.memos.join(' / ') || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="ag-table-wrap">
+              <table className="history-table">
+                <thead><tr><th>주차</th><th>객실 정비</th><th>욕실 청결</th><th>메모</th><th /></tr></thead>
+                <tbody>
+                  {[...data].reverse().map(d => (
+                    <tr key={d.id}>
+                      <td>{fmtWeek(d.week_start)}</td>
+                      <td style={{ color: '#E84393', fontWeight: 500 }}>{d.room_complaints ?? 0}건</td>
+                      <td style={{ color: '#1F72B8', fontWeight: 500 }}>{d.bathroom_complaints ?? 0}건</td>
+                      <td style={{ fontSize: 12, color: 'var(--text-2)' }}>{d.memo || '—'}</td>
+                      <td><button className="delete-btn" onClick={() => del(d.id)}>×</button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </>
       )}
     </div>

@@ -1,13 +1,13 @@
 // pages/index.js
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import {
-  Chart as ChartJS, CategoryScale, LinearScale,
+  Chart as ChartJS, CategoryScale, LinearScale, BarElement, BarController,
   PointElement, LineElement, Tooltip, Legend, Filler
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend, Filler);
+ChartJS.register(CategoryScale, LinearScale, BarElement, BarController, PointElement, LineElement, Tooltip, Legend, Filler);
 
 const PLATFORM_LABEL = {
   agoda: 'Agoda', airbnb: 'Airbnb', booking: 'Booking.com',
@@ -827,7 +827,7 @@ function AgodaRateChart({ labels, rates }) {
         }
       }
     });
-    return () => { if (canvasRef.current?.__chart) canvasRef.current.__chart.destroy(); };
+    return () => { try { if (canvasRef.current?.__chart) { canvasRef.current.__chart.destroy(); canvasRef.current.__chart = null; } } catch(e) {} };
   }, [labels, rates]);
   return <div style={{position:'relative', height:'220px'}}><canvas ref={canvasRef} /></div>;
 }
@@ -874,14 +874,12 @@ function AgodaDistChart({ labels, weekly }) {
             type: 'line',
             label: '전주 대비 증감(%p)',
             data: deltaData,
-            borderColor: ctx => 'transparent',
-            segment: { borderColor: ctx => {
-              const d = deltaData[ctx.p1DataIndex];
-              return d > 0 ? '#E24B4A' : '#0F6E56';
-            }},
-            pointBackgroundColor: deltaData.map(d => d === null ? 'transparent' : d > 0 ? '#E24B4A' : '#0F6E56'),
-            pointRadius: 5,
-            borderWidth: 2,
+            borderColor: '#888780',
+            pointBackgroundColor: deltaData.map(d => d === null ? 'rgba(0,0,0,0)' : d > 0 ? '#E24B4A' : '#0F6E56'),
+            pointBorderColor: deltaData.map(d => d === null ? 'rgba(0,0,0,0)' : d > 0 ? '#E24B4A' : '#0F6E56'),
+            pointRadius: deltaData.map(d => d === null ? 0 : 5),
+            borderWidth: 1.5,
+            borderDash: [3, 3],
             yAxisID: 'y2',
             tension: 0.3,
           }
@@ -906,7 +904,7 @@ function AgodaDistChart({ labels, weekly }) {
         }
       }
     });
-    return () => { if (canvasRef.current?.__chart) canvasRef.current.__chart.destroy(); };
+    return () => { try { if (canvasRef.current?.__chart) { canvasRef.current.__chart.destroy(); canvasRef.current.__chart = null; } } catch(e) {} };
   }, [labels, weekly, focusScore]);
 
   return (

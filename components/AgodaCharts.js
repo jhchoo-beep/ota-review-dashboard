@@ -320,6 +320,60 @@ function deltaTextColor(d) {
   return d > 0 ? '#085041' : '#791F1F';
 }
 
+
+// 주별 평균 점수 추이 라인 차트
+function AvgScoreLineChart({ weeks, avgScores, accent }) {
+  const canvasRef = useRef(null);
+  useChart(canvasRef, () => ({
+    type: 'line',
+    data: {
+      labels: weeks.map((w, i) => `W${i+1} ${w.slice(5)}`),
+      datasets: [{
+        label: '주별 평균 점수',
+        data: avgScores,
+        borderColor: accent,
+        backgroundColor: `${accent}18`,
+        pointBackgroundColor: avgScores.map(s =>
+          s === null ? 'transparent' : s >= 9.0 ? '#1D9E75' : s >= 8.5 ? accent : '#E24B4A'
+        ),
+        pointRadius: 6,
+        borderWidth: 2,
+        tension: 0.3,
+        fill: true,
+        spanGaps: true,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => `평균: ${ctx.parsed.y?.toFixed(1)}점` } },
+        annotation: {
+          annotations: {
+            target: {
+              type: 'line', yMin: 9.0, yMax: 9.0,
+              borderColor: '#1D9E75', borderWidth: 1.5, borderDash: [5,4],
+              label: { display: true, content: '목표 9.0', position: 'end',
+                color: '#1D9E75', font: { size: 11 } }
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          min: Math.max(0, Math.min(...avgScores.filter(s => s !== null)) - 0.5),
+          max: Math.min(10, Math.max(...avgScores.filter(s => s !== null)) + 0.3),
+          ticks: { callback: v => `${v.toFixed(1)}점` },
+          grid: { color: 'rgba(128,128,128,0.1)' },
+        },
+        x: { grid: { display: false } },
+      },
+    },
+  }), [weeks, avgScores]);
+  return <div style={{ position: 'relative', height: 180 }}><canvas ref={canvasRef} /></div>;
+}
+
 const VOC_CATS = ['청결', '서비스', '시설', '가격', '위치'];
 
 export function TabScoreDist({ propertyId, accent }) {
@@ -328,6 +382,7 @@ export function TabScoreDist({ propertyId, accent }) {
     week_start: '',
     score_1:'', score_2:'', score_3:'', score_4:'', score_5:'',
     score_6:'', score_7:'', score_8:'', score_9:'', score_10:'',
+    weekly_avg_score: '',
   });
   const [status, setStatus] = useState('idle');
   const [showCount, setShowCount] = useState(false);
@@ -369,7 +424,7 @@ export function TabScoreDist({ propertyId, accent }) {
     if (res.ok) {
       setStatus('ok');
       setForm({ week_start:'', score_1:'', score_2:'', score_3:'', score_4:'', score_5:'',
-        score_6:'', score_7:'', score_8:'', score_9:'', score_10:'' });
+        score_6:'', score_7:'', score_8:'', score_9:'', score_10:'', weekly_avg_score:'' });
       load();
       setTimeout(() => setStatus('idle'), 2000);
     } else { setStatus('error'); setTimeout(() => setStatus('idle'), 2000); }
@@ -410,6 +465,7 @@ export function TabScoreDist({ propertyId, accent }) {
   // 전체 주차의 구간별 비율 + 건수 계산
   const allPcts = recentData.map(w => calcBandPcts(w));
   const allCounts = recentData.map(w => BANDS.map(b => parseInt(w[b.key]) || 0));
+  const avgScores = recentData.map(w => w.weekly_avg_score != null ? parseFloat(w.weekly_avg_score) : null);
 
   // 전주 대비 증감: delta[wi][bi] = 이번주 - 전주
   const allDeltas = recentData.map((_, wi) =>
@@ -431,6 +487,14 @@ export function TabScoreDist({ propertyId, accent }) {
             <label>주차 시작일 (월요일)</label>
             <input type="date" required value={form.week_start}
               onChange={e => setForm(f => ({ ...f, week_start: e.target.value }))} />
+          </div>
+        </div>
+        <div className="form-row" style={{ marginBottom: 8 }}>
+          <div className="form-field">
+            <label>이번 주 평균 점수</label>
+            <input type="number" min="0" max="10" step="0.1" placeholder="예: 8.6"
+              value={form.weekly_avg_score}
+              onChange={e => setForm(f => ({ ...f, weekly_avg_score: e.target.value }))} />
           </div>
         </div>
         <div className="ag-score-label">구간별 건수 입력</div>
@@ -494,12 +558,29 @@ export function TabScoreDist({ propertyId, accent }) {
                         </th>
                       ))}
                     </tr>
+                    {avgScores.some(s => s !== null) && (
+                      <tr>
+                        <td className="hm-band-label" style={{ color: 'var(--color-text-secondary)', fontWeight: 500 }}>평균 점수</td>
+                        {avgScores.map((s, wi) => {
+                          const bg = s === null ? 'transparent'
+                            : s >= 9.0 ? '#E1F5EE' : s >= 8.5 ? '#FAEEDA' : s >= 8.0 ? '#FAC775' : '#FCEBEB';
+                          const tc = s === null ? 'var(--color-text-tertiary)'
+                            : s >= 9.0 ? '#085041' : s >= 8.5 ? '#633806' : s >= 8.0 ? '#633806' : '#791F1F';
+                          return (
+                            <td key={wi} style={{ background: bg, color: tc, fontWeight: 500, fontSize: 12,
+                              textAlign: 'center', padding: '6px 4px', borderRadius: 6 }}>
+                              {s !== null ? s.toFixed(1) : '—'}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    )}
                   </thead>
                   <tbody>
                     {BANDS.map((b, bi) => (
                       <tr key={b.key}>
                         <td className="hm-band-label" style={{ color: b.color }}>{b.label}</td>
-                        {data.map((_, wi) => {
+                        {recentData.map((_, wi) => {
                           const pct = allPcts[wi][bi];
                           const cnt = allCounts[wi][bi];
                           const bg = heatColor(pct);
@@ -562,6 +643,14 @@ export function TabScoreDist({ propertyId, accent }) {
             </div>
 
           </div>
+
+          {/* 주별 평균 점수 추이 라인 차트 */}
+          {avgScores.some(s => s !== null) && (
+            <div style={{ marginTop: 20 }}>
+              <div className="ag-chart-label">주별 평균 점수 추이</div>
+              <AvgScoreLineChart weeks={weeks} avgScores={avgScores} accent={accent} />
+            </div>
+          )}
 
           {/* 증감 요약 칩 — 최신 주차 기준 ±1%p 이상만 표시 */}
           {recentData.length > 1 && (() => {

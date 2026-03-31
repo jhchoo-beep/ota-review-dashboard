@@ -45,6 +45,7 @@ export default async function handler(req, res) {
       property_id, week_start,
       score_1, score_2, score_3, score_4, score_5,
       score_6, score_7, score_8, score_9, score_10,
+      weekly_avg_score,
     } = req.body;
     if (!property_id || !week_start) return res.status(400).json({ error: '필수값 누락' });
     try {

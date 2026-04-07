@@ -271,33 +271,6 @@ function groupRateByMonth(data) {
   return Object.values(map).sort((a, b) => a.month.localeCompare(b.month));
 }
 
-// 월별 점수 분포 집계 유틸
-function groupDistByMonth(data) {
-  const map = {};
-  data.forEach(d => {
-    const key = d.week_start?.slice(0, 7); // 'YYYY-MM'
-    if (!key) return;
-    if (!map[key]) {
-      map[key] = { week_start: key + '-01', month: key };
-      BAND_KEYS.forEach(k => { map[key][k] = 0; });
-      map[key].weekly_avg_score_sum = 0;
-      map[key].weekly_avg_score_count = 0;
-    }
-    BAND_KEYS.forEach(k => { map[key][k] += parseInt(d[k]) || 0; });
-    if (d.weekly_avg_score != null) {
-      map[key].weekly_avg_score_sum += parseFloat(d.weekly_avg_score);
-      map[key].weekly_avg_score_count += 1;
-    }
-  });
-  return Object.values(map).sort((a, b) => a.month.localeCompare(b.month)).map(d => ({
-    ...d,
-    weekly_avg_score: d.weekly_avg_score_count > 0
-      ? parseFloat((d.weekly_avg_score_sum / d.weekly_avg_score_count).toFixed(1))
-      : null,
-  }));
-}
-const BAND_KEYS = ['score_1','score_2','score_3','score_4','score_5','score_6','score_7','score_8','score_9'];
-
 // 구간 정의 (9개): score_1=1~2점구간, score_2=2~3점구간, ..., score_9=9~10점구간
 // DB 컬럼 score_1~score_9 를 그대로 사용 (score_10은 미사용)
 const BANDS = [
@@ -311,6 +284,32 @@ const BANDS = [
   { label: '8~9점',  key: 'score_8', color: '#0F6E56', bg: 'rgba(15,110,86,0.70)' },
   { label: '9~10점', key: 'score_9', color: '#0F6E56', bg: 'rgba(15,110,86,0.85)' },
 ];
+
+const BAND_KEYS = ['score_1','score_2','score_3','score_4','score_5','score_6','score_7','score_8','score_9'];
+
+// 월별 점수 분포 집계 유틸 (BANDS/BAND_KEYS 정의 이후에 배치)
+function groupDistByMonth(data) {
+  const map = {};
+  data.forEach(d => {
+    const key = d.week_start?.slice(0, 7);
+    if (!key) return;
+    if (!map[key]) {
+      map[key] = { week_start: key + '-01', month: key };
+      BAND_KEYS.forEach(k => { map[key][k] = 0; });
+      map[key]._avgSum = 0;
+      map[key]._avgCnt = 0;
+    }
+    BAND_KEYS.forEach(k => { map[key][k] += parseInt(d[k]) || 0; });
+    if (d.weekly_avg_score != null) {
+      map[key]._avgSum += parseFloat(d.weekly_avg_score);
+      map[key]._avgCnt += 1;
+    }
+  });
+  return Object.values(map).sort((a, b) => a.month.localeCompare(b.month)).map(d => ({
+    ...d,
+    weekly_avg_score: d._avgCnt > 0 ? parseFloat((d._avgSum / d._avgCnt).toFixed(1)) : null,
+  }));
+}
 
 function calcBandPcts(w) {
   if (!w) return Array(9).fill(0);

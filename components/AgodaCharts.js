@@ -502,7 +502,7 @@ export function TabScoreDist({ propertyId, accent }) {
   const avgScores = displayData.map(w => w.weekly_avg_score != null ? parseFloat(w.weekly_avg_score) : null);
 
   // 전주 대비 증감: delta[wi][bi] = 이번주 - 전주
-  const allDeltas = recentData.map((_, wi) =>
+  const allDeltas = displayData.map((_, wi) =>
     wi === 0 ? null : BANDS.map((_, bi) =>
       parseFloat((allPcts[wi][bi] - allPcts[wi - 1][bi]).toFixed(1))
     )
@@ -625,7 +625,7 @@ export function TabScoreDist({ propertyId, accent }) {
                     {BANDS.map((b, bi) => (
                       <tr key={b.key}>
                         <td className="hm-band-label" style={{ color: b.color }}>{b.label}</td>
-                        {recentData.map((_, wi) => {
+                        {displayData.map((_, wi) => {
                           const pct = allPcts[wi][bi];
                           const cnt = allCounts[wi][bi];
                           const bg = heatColor(pct);

@@ -1735,3 +1735,37 @@ label.ag-high { color: #0F6E56; }
   color: var(--color-text-tertiary);
   margin-top: 3px;
 }
+
+/* ============================
+   주간 선택기 (WeekPicker)
+   ============================ */
+.week-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.week-picker input[type="week"] {
+  height: 36px;
+  border: 0.5px solid var(--color-border-secondary);
+  border-radius: var(--border-radius-md);
+  padding: 0 10px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--color-text-primary);
+  background: var(--color-background-primary);
+  width: 100%;
+  cursor: pointer;
+}
+.week-picker input[type="week"]:focus {
+  outline: none;
+  border-color: #E84393;
+}
+.week-range-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  background: var(--color-background-secondary);
+  padding: 6px 10px;
+  border-left: 2px solid #E84393;
+  border-radius: 0 6px 6px 0;
+}

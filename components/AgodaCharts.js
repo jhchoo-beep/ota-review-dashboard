@@ -1,4 +1,35 @@
 import { useState, useEffect, useRef } from 'react';
+
+// 주차 선택기 유틸: ISO week string(2026-W13) → 월요일 날짜(2026-03-23)
+function isoWeekToMonday(weekStr) {
+  if (!weekStr) return '';
+  const [year, week] = weekStr.split('-W').map(Number);
+  const jan4 = new Date(year, 0, 4);
+  const startOfW1 = new Date(jan4);
+  startOfW1.setDate(jan4.getDate() - (jan4.getDay() || 7) + 1);
+  const monday = new Date(startOfW1);
+  monday.setDate(startOfW1.getDate() + (week - 1) * 7);
+  return monday.toISOString().slice(0, 10);
+}
+// 월요일 날짜(2026-03-23) → ISO week string(2026-W13)
+function mondayToIsoWeek(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T00:00:00');
+  const thu = new Date(d); thu.setDate(d.getDate() + 3);
+  const year = thu.getFullYear();
+  const jan1 = new Date(year, 0, 1);
+  const week = Math.ceil(((thu - jan1) / 86400000 + 1) / 7);
+  return `${year}-W${String(week).padStart(2, '0')}`;
+}
+// 월요일 날짜(2026-03-23) → 구간 표시 (3월 23일(월) ~ 3월 29일(일))
+function weekRangeLabel(dateStr) {
+  if (!dateStr) return '';
+  const mon = new Date(dateStr + 'T00:00:00');
+  const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+  const days = ['일','월','화','수','목','금','토'];
+  const fmt = d => `${d.getMonth()+1}월 ${d.getDate()}일(${days[d.getDay()]})`;
+  return `${fmt(mon)} ~ ${fmt(sun)}`;
+}
 import {
   Chart as ChartJS, CategoryScale, LinearScale, BarElement, BarController,
   PointElement, LineElement, Tooltip, Legend, Filler
@@ -8,6 +39,31 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, BarController, PointEle
 
 // ── 공통 유틸 ─────────────────────────────────────────────────────────
 const fmtWeek = (d) => d?.slice(0, 10) ?? '';
+
+// 주간 선택기 컴포넌트 (3개 탭 공통)
+function WeekPicker({ value, onChange, required }) {
+  const weekVal = value ? mondayToIsoWeek(value) : '';
+  const label = value ? weekRangeLabel(value) : '';
+  return (
+    <div className="week-picker">
+      <input
+        type="week"
+        required={required}
+        value={weekVal}
+        onChange={e => {
+          const monday = isoWeekToMonday(e.target.value);
+          onChange(monday);
+        }}
+        style={{ width: '100%' }}
+      />
+      {label && (
+        <div className="week-range-label">
+          {label}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function useChart(canvasRef, buildConfig, deps) {
   useEffect(() => {
@@ -161,9 +217,12 @@ export function TabReviewRate({ propertyId, accent }) {
       <form onSubmit={save} className="review-form" style={{ marginBottom: 24 }}>
         <div className="form-row">
           <div className="form-field">
-            <label>주차 시작일 (월요일)</label>
-            <input type="date" required value={form.week_start}
-              onChange={e => setForm(f => ({ ...f, week_start: e.target.value }))} />
+            <label>주차 선택</label>
+            <WeekPicker
+              required
+              value={form.week_start}
+              onChange={v => setForm(f => ({ ...f, week_start: v }))}
+            />
           </div>
           <div className="form-field">
             <label>리뷰 제출 건수</label>
@@ -520,9 +579,12 @@ export function TabScoreDist({ propertyId, accent }) {
       <form onSubmit={save} className="review-form" style={{ marginBottom: 24 }}>
         <div className="form-row">
           <div className="form-field">
-            <label>주차 시작일 (월요일)</label>
-            <input type="date" required value={form.week_start}
-              onChange={e => setForm(f => ({ ...f, week_start: e.target.value }))} />
+            <label>주차 선택</label>
+            <WeekPicker
+              required
+              value={form.week_start}
+              onChange={v => setForm(f => ({ ...f, week_start: v }))}
+            />
           </div>
         </div>
         <div className="form-row" style={{ marginBottom: 8 }}>
@@ -996,9 +1058,12 @@ export function TabComplaints({ propertyId, accent }) {
       <form onSubmit={save} className="review-form" style={{ marginBottom: 24 }}>
         <div className="form-row">
           <div className="form-field">
-            <label>주차 시작일 (월요일)</label>
-            <input type="date" required value={form.week_start}
-              onChange={e => setForm(f => ({ ...f, week_start: e.target.value }))} />
+            <label>주차 선택</label>
+            <WeekPicker
+              required
+              value={form.week_start}
+              onChange={v => setForm(f => ({ ...f, week_start: v }))}
+            />
           </div>
           <div className="form-field">
             <label>객실 정비 불만</label>

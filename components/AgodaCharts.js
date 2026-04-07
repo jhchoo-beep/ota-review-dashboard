@@ -271,6 +271,33 @@ function groupRateByMonth(data) {
   return Object.values(map).sort((a, b) => a.month.localeCompare(b.month));
 }
 
+// 월별 점수 분포 집계 유틸
+function groupDistByMonth(data) {
+  const map = {};
+  data.forEach(d => {
+    const key = d.week_start?.slice(0, 7); // 'YYYY-MM'
+    if (!key) return;
+    if (!map[key]) {
+      map[key] = { week_start: key + '-01', month: key };
+      BAND_KEYS.forEach(k => { map[key][k] = 0; });
+      map[key].weekly_avg_score_sum = 0;
+      map[key].weekly_avg_score_count = 0;
+    }
+    BAND_KEYS.forEach(k => { map[key][k] += parseInt(d[k]) || 0; });
+    if (d.weekly_avg_score != null) {
+      map[key].weekly_avg_score_sum += parseFloat(d.weekly_avg_score);
+      map[key].weekly_avg_score_count += 1;
+    }
+  });
+  return Object.values(map).sort((a, b) => a.month.localeCompare(b.month)).map(d => ({
+    ...d,
+    weekly_avg_score: d.weekly_avg_score_count > 0
+      ? parseFloat((d.weekly_avg_score_sum / d.weekly_avg_score_count).toFixed(1))
+      : null,
+  }));
+}
+const BAND_KEYS = ['score_1','score_2','score_3','score_4','score_5','score_6','score_7','score_8','score_9'];
+
 // 구간 정의 (9개): score_1=1~2점구간, score_2=2~3점구간, ..., score_9=9~10점구간
 // DB 컬럼 score_1~score_9 를 그대로 사용 (score_10은 미사용)
 const BANDS = [
@@ -386,6 +413,7 @@ export function TabScoreDist({ propertyId, accent }) {
   });
   const [status, setStatus] = useState('idle');
   const [showCount, setShowCount] = useState(false);
+  const [viewMode, setViewMode] = useState('weekly'); // 'weekly' | 'monthly'
 
   // VOC 상태
   const [vocData, setVocData] = useState([]);
@@ -416,10 +444,14 @@ export function TabScoreDist({ propertyId, accent }) {
   const save = async (e) => {
     e.preventDefault();
     setStatus('loading');
+    // weekly_avg_score는 별도 분리 (API가 지원하지 않는 구버전 호환)
+    const { weekly_avg_score, ...scoreForm } = form;
+    const payload = { property_id: propertyId, ...scoreForm };
+    if (weekly_avg_score !== '') payload.weekly_avg_score = parseFloat(weekly_avg_score);
     const res = await fetch('/api/agoda-score-dist', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ property_id: propertyId, ...form }),
+      body: JSON.stringify(payload),
     });
     if (res.ok) {
       setStatus('ok');
@@ -461,11 +493,14 @@ export function TabScoreDist({ propertyId, accent }) {
 
   // 최근 8주만 표시 (DB에는 전체 저장, 히트맵은 최근 8주)
   const recentData = data.slice(-8);
+  const monthlyData = groupDistByMonth(data).slice(-8); // 최근 8개월
+
+  const displayData = viewMode === 'monthly' ? monthlyData : recentData;
 
   // 전체 주차의 구간별 비율 + 건수 계산
-  const allPcts = recentData.map(w => calcBandPcts(w));
-  const allCounts = recentData.map(w => BANDS.map(b => parseInt(w[b.key]) || 0));
-  const avgScores = recentData.map(w => w.weekly_avg_score != null ? parseFloat(w.weekly_avg_score) : null);
+  const allPcts = displayData.map(w => calcBandPcts(w));
+  const allCounts = displayData.map(w => BANDS.map(b => parseInt(w[b.key]) || 0));
+  const avgScores = displayData.map(w => w.weekly_avg_score != null ? parseFloat(w.weekly_avg_score) : null);
 
   // 전주 대비 증감: delta[wi][bi] = 이번주 - 전주
   const allDeltas = recentData.map((_, wi) =>
@@ -474,7 +509,9 @@ export function TabScoreDist({ propertyId, accent }) {
     )
   );
 
-  const weeks = recentData.map(d => fmtWeek(d.week_start));
+  const weeks = displayData.map(d =>
+    viewMode === 'monthly' ? d.month : fmtWeek(d.week_start)
+  );
 
   return (
     <div className="panel-body">
@@ -521,8 +558,15 @@ export function TabScoreDist({ propertyId, accent }) {
         <div className="empty-state"><p>데이터를 입력하면 히트맵이 표시됩니다</p></div>
       ) : (
         <>
-          {/* 비율/건수 토글 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+          {/* 주별/월별 토글 + 비율/건수 토글 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+            <button className="ag-view-btn"
+              style={viewMode === 'weekly' ? { background: accent, borderColor: accent, color: '#fff' } : {}}
+              onClick={() => setViewMode('weekly')}>주별</button>
+            <button className="ag-view-btn"
+              style={viewMode === 'monthly' ? { background: accent, borderColor: accent, color: '#fff' } : {}}
+              onClick={() => setViewMode('monthly')}>월별</button>
+            <span style={{ width: 1, height: 18, background: 'var(--color-border-tertiary)', margin: '0 4px' }} />
             <button
               className="ag-view-btn"
               style={!showCount ? { background: accent, borderColor: accent, color: '#fff' } : {}}
@@ -553,8 +597,10 @@ export function TabScoreDist({ propertyId, accent }) {
                       <th className="hm-band-th">구간</th>
                       {weeks.map((w, wi) => (
                         <th key={wi} className="hm-week-th">
-                          W{wi + 1}<br />
-                          <span style={{ fontWeight: 400, fontSize: 10, color: 'var(--color-text-tertiary)' }}>{w.slice(5)}</span>
+                          {viewMode === 'monthly' ? w.slice(0,7) : `W${wi + 1}`}<br />
+                          <span style={{ fontWeight: 400, fontSize: 10, color: 'var(--color-text-tertiary)' }}>
+                            {viewMode === 'monthly' ? '' : w.slice(5)}
+                          </span>
                         </th>
                       ))}
                     </tr>
@@ -653,8 +699,8 @@ export function TabScoreDist({ propertyId, accent }) {
           )}
 
           {/* 증감 요약 칩 — 최신 주차 기준 ±1%p 이상만 표시 */}
-          {recentData.length > 1 && (() => {
-            const lastIdx = recentData.length - 1;
+          {displayData.length > 1 && (() => {
+            const lastIdx = displayData.length - 1;
             const cur = allPcts[lastIdx];
             const prev = allPcts[lastIdx - 1];
             const chips = BANDS.map((b, bi) => ({
@@ -678,7 +724,7 @@ export function TabScoreDist({ propertyId, accent }) {
           })()}
 
           {/* VOC 요약 패널 */}
-          {data.length > 0 && (
+          {data.length > 0 && viewMode === 'weekly' && (
             <div className="voc-panel" style={{ marginTop: 20 }}>
               <div className="voc-panel-header">
                 <span className="voc-section-label" style={{ margin: 0 }}>VOC 요약</span>

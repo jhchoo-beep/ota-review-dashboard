@@ -77,6 +77,34 @@ export default async function handler(req, res) {
     }
   }
 
+  if (req.method === 'PUT') {
+    const { id } = req.query;
+    if (!id) return res.status(400).json({ error: 'id 필요' });
+    const {
+      week_start,
+      score_1, score_2, score_3, score_4, score_5,
+      score_6, score_7, score_8, score_9, score_10,
+      weekly_avg_score,
+    } = req.body;
+    try {
+      const rows = await sql`
+        UPDATE agoda_score_dist SET
+          week_start = ${week_start},
+          score_1 = ${score_1 || 0}, score_2 = ${score_2 || 0},
+          score_3 = ${score_3 || 0}, score_4 = ${score_4 || 0},
+          score_5 = ${score_5 || 0}, score_6 = ${score_6 || 0},
+          score_7 = ${score_7 || 0}, score_8 = ${score_8 || 0},
+          score_9 = ${score_9 || 0}, score_10 = ${score_10 || 0},
+          weekly_avg_score = ${weekly_avg_score || null}
+        WHERE id = ${id}
+        RETURNING *
+      `;
+      return res.status(200).json(rows[0]);
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   if (req.method === 'DELETE') {
     const { id } = req.query;
     if (!id) return res.status(400).json({ error: 'id 필요' });

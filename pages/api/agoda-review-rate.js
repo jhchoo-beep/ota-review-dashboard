@@ -47,6 +47,25 @@ export default async function handler(req, res) {
     }
   }
 
+  if (req.method === 'PUT') {
+    const { id } = req.query;
+    if (!id) return res.status(400).json({ error: 'id 필요' });
+    const { week_start, review_count, checkout_count } = req.body;
+    try {
+      const rows = await sql`
+        UPDATE agoda_review_rate SET
+          week_start = ${week_start},
+          review_count = ${review_count || null},
+          checkout_count = ${checkout_count || null}
+        WHERE id = ${id}
+        RETURNING *
+      `;
+      return res.status(200).json(rows[0]);
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   if (req.method === 'DELETE') {
     const { id } = req.query;
     if (!id) return res.status(400).json({ error: 'id 필요' });

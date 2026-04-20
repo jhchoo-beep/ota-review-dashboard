@@ -437,6 +437,45 @@ body {
 }
 .btn-delete:hover { color: #ef4444; background: #fee2e2; }
 
+.btn-edit {
+  border: none;
+  background: none;
+  color: var(--text-3);
+  font-size: 15px;
+  cursor: pointer;
+  padding: 2px 5px;
+  border-radius: 4px;
+  line-height: 1;
+  margin-right: 2px;
+}
+.btn-edit:hover { color: #3b82f6; background: #eff6ff; }
+
+.btn-edit-save {
+  border: none;
+  background: none;
+  color: #16a34a;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 5px;
+  border-radius: 4px;
+  line-height: 1;
+  margin-right: 2px;
+}
+.btn-edit-save:hover { background: #dcfce7; }
+
+.btn-edit-cancel {
+  border: none;
+  background: none;
+  color: var(--text-3);
+  font-size: 15px;
+  cursor: pointer;
+  padding: 2px 5px;
+  border-radius: 4px;
+  line-height: 1;
+}
+.btn-edit-cancel:hover { color: #ef4444; background: #fee2e2; }
+
 /* ── Table ─────────────────────────────────────────── */
 .table-wrap { overflow-x: auto; }
 .history-table {

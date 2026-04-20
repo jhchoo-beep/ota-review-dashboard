@@ -53,6 +53,26 @@ export default async function handler(req, res) {
     }
   }
 
+  if (req.method === 'PUT') {
+    const { id } = req.query;
+    if (!id) return res.status(400).json({ error: 'id 필요' });
+    const { week_start, room_complaints, bathroom_complaints, memo } = req.body;
+    try {
+      const rows = await sql`
+        UPDATE agoda_complaints SET
+          week_start = ${week_start},
+          room_complaints = ${room_complaints || 0},
+          bathroom_complaints = ${bathroom_complaints || 0},
+          memo = ${memo || null}
+        WHERE id = ${id}
+        RETURNING *
+      `;
+      return res.status(200).json(rows[0]);
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   if (req.method === 'DELETE') {
     const { id } = req.query;
     if (!id) return res.status(400).json({ error: 'id 필요' });

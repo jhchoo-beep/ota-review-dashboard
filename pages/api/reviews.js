@@ -87,6 +87,52 @@ export default async function handler(req, res) {
     }
   }
 
+  if (req.method === 'PUT') {
+    const { id } = req.query;
+    if (!id) return res.status(400).json({ error: 'id 필요' });
+    const {
+      recorded_at, review_count, overall_score, cleanliness, facilities,
+      location, service, value_for_money, response_rate,
+      staff_friendliness, comfort, free_wifi,
+      staff_service, amenities, property_condition,
+      google_score, naver_score, kakao_score, tripadvisor_score,
+      google_count, naver_count, kakao_count, tripadvisor_count,
+    } = req.body;
+    try {
+      const rows = await sql`
+        UPDATE reviews SET
+          recorded_at = ${recorded_at},
+          review_count = ${review_count || null},
+          overall_score = ${overall_score || null},
+          cleanliness = ${cleanliness || null},
+          facilities = ${facilities || null},
+          location = ${location || null},
+          service = ${service || null},
+          value_for_money = ${value_for_money || null},
+          response_rate = ${response_rate || null},
+          staff_friendliness = ${staff_friendliness || null},
+          comfort = ${comfort || null},
+          free_wifi = ${free_wifi || null},
+          staff_service = ${staff_service || null},
+          amenities = ${amenities || null},
+          property_condition = ${property_condition || null},
+          google_score = ${google_score || null},
+          naver_score = ${naver_score || null},
+          kakao_score = ${kakao_score || null},
+          tripadvisor_score = ${tripadvisor_score || null},
+          google_count = ${google_count || null},
+          naver_count = ${naver_count || null},
+          kakao_count = ${kakao_count || null},
+          tripadvisor_count = ${tripadvisor_count || null}
+        WHERE id = ${id}
+        RETURNING *
+      `;
+      return res.status(200).json(rows[0]);
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   if (req.method === 'DELETE') {
     const { id } = req.query;
     if (!id) return res.status(400).json({ error: 'id 필요' });

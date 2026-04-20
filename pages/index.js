@@ -402,7 +402,10 @@ function ReviewCountChart({ reviews }) {
 }
 
 // -- History Table
-function HistoryTable({ reviews, platform, onDelete }) {
+function HistoryTable({ reviews, platform, onDelete, onEdit }) {
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({});
+
   const isAirbnb = platform === 'airbnb';
   const isBooking = platform === 'booking';
   const isTripcom = platform === 'tripcom';
@@ -411,6 +414,20 @@ function HistoryTable({ reviews, platform, onDelete }) {
   const is5Point = ['airbnb', 'nol'].includes(platform);
   const scoreMax = is5Point ? 5 : 10;
   const sorted = [...reviews].sort((a, b) => b.recorded_at.localeCompare(a.recorded_at));
+
+  const startEdit = (r) => {
+    setEditingId(r.id);
+    setEditForm({ ...r, recorded_at: r.recorded_at?.slice(0, 10) });
+  };
+  const cancelEdit = () => { setEditingId(null); setEditForm({}); };
+  const saveEdit = () => { onEdit(editingId, editForm); setEditingId(null); setEditForm({}); };
+  const setF = (k, v) => setEditForm(f => ({ ...f, [k]: v }));
+
+  const numInput = (key, placeholder, max = 10, step = '0.1') => (
+    <input type="number" value={editForm[key] ?? ''} onChange={e => setF(key, e.target.value)}
+      placeholder={placeholder} step={step} min="0" max={max}
+      style={{ width: '64px', fontSize: '12px', padding: '2px 4px' }} />
+  );
 
   if (!sorted.length) return <p className="empty-msg">아직 기록이 없습니다</p>;
 
@@ -439,54 +456,87 @@ function HistoryTable({ reviews, platform, onDelete }) {
           </tr>
         </thead>
         <tbody>
-          {sorted.map(r => (
-            <tr key={r.id}>
-              <td>{r.recorded_at?.slice(0, 10)}</td>
-              {isMetaSearch ? (
-                <>
-                  <td><ScoreBadge value={r.google_score} />{r.google_count ? <span style={{fontSize:'11px',color:'#999',marginLeft:'4px'}}>({Number(r.google_count).toLocaleString()})</span> : ''}</td>
-                  <td><ScoreBadge value={r.kakao_score} />{r.kakao_count ? <span style={{fontSize:'11px',color:'#999',marginLeft:'4px'}}>({Number(r.kakao_count).toLocaleString()})</span> : ''}</td>
-                </>
-              ) : (
-                <>
-                  <td>{fmtCount(r.review_count)}</td>
-                  <td><ScoreBadge value={r.overall_score} max={scoreMax} /></td>
-                  {!isAirbnb && !isBooking && !isTripcom && !isExpedia && <>
-                    <td><ScoreBadge value={r.cleanliness} /></td>
-                    <td><ScoreBadge value={r.facilities} /></td>
-                    <td><ScoreBadge value={r.service} /></td>
-                    <td><ScoreBadge value={r.value_for_money} /></td>
-                    <td><ScoreBadge value={r.location} /></td>
-                  </>}
-                  {isAirbnb && <td>{r.response_rate != null ? `${r.response_rate}%` : '—'}</td>}
-                  {isBooking && <>
-                    <td><ScoreBadge value={r.staff_friendliness} /></td>
-                    <td><ScoreBadge value={r.facilities} /></td>
-                    <td><ScoreBadge value={r.cleanliness} /></td>
-                    <td><ScoreBadge value={r.comfort} /></td>
-                    <td><ScoreBadge value={r.value_for_money} /></td>
-                    <td><ScoreBadge value={r.location} /></td>
-                    <td><ScoreBadge value={r.free_wifi} /></td>
-                  </>}
-                  {isTripcom && <>
-                    <td><ScoreBadge value={r.cleanliness} /></td>
-                    <td><ScoreBadge value={r.facilities} /></td>
-                    <td><ScoreBadge value={r.location} /></td>
-                    <td><ScoreBadge value={r.service} /></td>
-                  </>}
-                  {isExpedia && <>
-                    <td><ScoreBadge value={r.cleanliness} /></td>
-                    <td><ScoreBadge value={r.staff_service} /></td>
-                    <td><ScoreBadge value={r.amenities} /></td>
-                    <td><ScoreBadge value={r.property_condition} /></td>
-                  </>}
-                </>
-              )}
-              <td>
-                <button className="btn-delete" onClick={() => onDelete(r.id)} title="삭제">×</button>
-              </td>
-            </tr>
-          ))}
+          {sorted.map(r => {
+            const isEditing = r.id === editingId;
+            return (
+              <tr key={r.id} style={isEditing ? { background: 'var(--bg, #fafafa)' } : {}}>
+                <td>
+                  {isEditing
+                    ? <input type="date" value={editForm.recorded_at ?? ''} onChange={e => setF('recorded_at', e.target.value)} style={{ fontSize: '12px', padding: '2px 4px' }} />
+                    : r.recorded_at?.slice(0, 10)}
+                </td>
+                {isMetaSearch ? (
+                  <>
+                    <td>
+                      {isEditing ? (
+                        <span style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                          {numInput('google_score', '점수', 5)} {numInput('google_count', '건수', 999999, '1')}
+                        </span>
+                      ) : (
+                        <>{<ScoreBadge value={r.google_score} />}{r.google_count ? <span style={{fontSize:'11px',color:'#999',marginLeft:'4px'}}>({Number(r.google_count).toLocaleString()})</span> : ''}</>
+                      )}
+                    </td>
+                    <td>
+                      {isEditing ? (
+                        <span style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                          {numInput('kakao_score', '점수', 5)} {numInput('kakao_count', '건수', 999999, '1')}
+                        </span>
+                      ) : (
+                        <>{<ScoreBadge value={r.kakao_score} />}{r.kakao_count ? <span style={{fontSize:'11px',color:'#999',marginLeft:'4px'}}>({Number(r.kakao_count).toLocaleString()})</span> : ''}</>
+                      )}
+                    </td>
+                  </>
+                ) : (
+                  <>
+                    <td>{isEditing ? numInput('review_count', '리뷰수', 9999999, '1') : fmtCount(r.review_count)}</td>
+                    <td>{isEditing ? numInput('overall_score', '점수', scoreMax) : <ScoreBadge value={r.overall_score} max={scoreMax} />}</td>
+                    {!isAirbnb && !isBooking && !isTripcom && !isExpedia && <>
+                      <td>{isEditing ? numInput('cleanliness', '청결') : <ScoreBadge value={r.cleanliness} />}</td>
+                      <td>{isEditing ? numInput('facilities', '시설') : <ScoreBadge value={r.facilities} />}</td>
+                      <td>{isEditing ? numInput('service', '서비스') : <ScoreBadge value={r.service} />}</td>
+                      <td>{isEditing ? numInput('value_for_money', '가격') : <ScoreBadge value={r.value_for_money} />}</td>
+                      <td>{isEditing ? numInput('location', '위치') : <ScoreBadge value={r.location} />}</td>
+                    </>}
+                    {isAirbnb && <td>{isEditing ? numInput('response_rate', '응답률', 100, '1') : (r.response_rate != null ? `${r.response_rate}%` : '—')}</td>}
+                    {isBooking && <>
+                      <td>{isEditing ? numInput('staff_friendliness', '친절도') : <ScoreBadge value={r.staff_friendliness} />}</td>
+                      <td>{isEditing ? numInput('facilities', '시설') : <ScoreBadge value={r.facilities} />}</td>
+                      <td>{isEditing ? numInput('cleanliness', '청결도') : <ScoreBadge value={r.cleanliness} />}</td>
+                      <td>{isEditing ? numInput('comfort', '편안함') : <ScoreBadge value={r.comfort} />}</td>
+                      <td>{isEditing ? numInput('value_for_money', '가성비') : <ScoreBadge value={r.value_for_money} />}</td>
+                      <td>{isEditing ? numInput('location', '위치') : <ScoreBadge value={r.location} />}</td>
+                      <td>{isEditing ? numInput('free_wifi', 'Wi-Fi') : <ScoreBadge value={r.free_wifi} />}</td>
+                    </>}
+                    {isTripcom && <>
+                      <td>{isEditing ? numInput('cleanliness', '청결도') : <ScoreBadge value={r.cleanliness} />}</td>
+                      <td>{isEditing ? numInput('facilities', '시설') : <ScoreBadge value={r.facilities} />}</td>
+                      <td>{isEditing ? numInput('location', '위치') : <ScoreBadge value={r.location} />}</td>
+                      <td>{isEditing ? numInput('service', '서비스') : <ScoreBadge value={r.service} />}</td>
+                    </>}
+                    {isExpedia && <>
+                      <td>{isEditing ? numInput('cleanliness', '청결도') : <ScoreBadge value={r.cleanliness} />}</td>
+                      <td>{isEditing ? numInput('staff_service', '직원/서비스') : <ScoreBadge value={r.staff_service} />}</td>
+                      <td>{isEditing ? numInput('amenities', '편의시설') : <ScoreBadge value={r.amenities} />}</td>
+                      <td>{isEditing ? numInput('property_condition', '시설상태') : <ScoreBadge value={r.property_condition} />}</td>
+                    </>}
+                  </>
+                )}
+                <td style={{ whiteSpace: 'nowrap' }}>
+                  {isEditing ? (
+                    <>
+                      <button className="btn-edit-save" onClick={saveEdit} title="저장">✓</button>
+                      <button className="btn-edit-cancel" onClick={cancelEdit} title="취소">✕</button>
+                    </>
+                  ) : (
+                    <>
+                      <button className="btn-edit" onClick={() => startEdit(r)} title="수정">✎</button>
+                      <button className="btn-delete" onClick={() => onDelete(r.id)} title="삭제">×</button>
+                    </>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -849,6 +899,15 @@ function PropertyPanel({ property }) {
   const handleDelete = async (id) => {
     if (!confirm('이 기록을 삭제할까요?')) return;
     await fetch(`/api/reviews?id=${id}`, { method: 'DELETE' });
+    load();
+  };
+
+  const handleEdit = async (id, data) => {
+    await fetch(`/api/reviews?id=${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
     load();
   };
 
@@ -1374,7 +1433,7 @@ function PropertyPanel({ property }) {
       {tab === 'history' && (
         <div className="panel-body">
           <h3 className="section-title">전체 기록</h3>
-          <HistoryTable reviews={reviews} platform={property.platform} onDelete={handleDelete} />
+          <HistoryTable reviews={reviews} platform={property.platform} onDelete={handleDelete} onEdit={handleEdit} />
         </div>
       )}
     </div>

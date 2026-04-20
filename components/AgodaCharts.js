@@ -83,6 +83,26 @@ export function TabReviewRate({ propertyId, accent }) {
     load();
   };
 
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({});
+
+  const startEdit = (d) => {
+    setEditingId(d.id);
+    setEditForm({ week_start: fmtWeek(d.week_start), review_count: d.review_count ?? '', checkout_count: d.checkout_count ?? '' });
+  };
+  const cancelEdit = () => { setEditingId(null); setEditForm({}); };
+  const saveEdit = async () => {
+    await fetch(`/api/agoda-review-rate?id=${editingId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(editForm),
+    });
+    setEditingId(null);
+    setEditForm({});
+    load();
+  };
+  const setF = (k, v) => setEditForm(f => ({ ...f, [k]: v }));
+
   const isMonthly = viewMode === 'monthly';
   const monthlyData = groupRateByMonth(data);
 
@@ -253,17 +273,32 @@ export function TabReviewRate({ propertyId, accent }) {
               <table className="history-table">
                 <thead><tr><th>주차</th><th>리뷰 제출</th><th>체크아웃</th><th>작성률</th><th /></tr></thead>
                 <tbody>
-                  {[...data].reverse().map(d => (
-                    <tr key={d.id}>
-                      <td>{fmtWeek(d.week_start)}</td>
-                      <td>{d.review_count ?? '—'}</td>
-                      <td>{d.checkout_count ?? '—'}</td>
-                      <td style={{ fontWeight: 500, color: accent }}>
-                        {d.checkout_count > 0 ? `${((d.review_count / d.checkout_count) * 100).toFixed(1)}%` : '—'}
-                      </td>
-                      <td><button className="delete-btn" onClick={() => del(d.id)}>×</button></td>
-                    </tr>
-                  ))}
+                  {[...data].reverse().map(d => {
+                    const isEd = d.id === editingId;
+                    return (
+                      <tr key={d.id} style={isEd ? { background: 'var(--bg, #fafafa)' } : {}}>
+                        <td>{isEd ? <input type="date" value={editForm.week_start} onChange={e => setF('week_start', e.target.value)} style={{ fontSize: 12, padding: '2px 4px' }} /> : fmtWeek(d.week_start)}</td>
+                        <td>{isEd ? <input type="number" min="0" value={editForm.review_count} onChange={e => setF('review_count', e.target.value)} style={{ width: 70, fontSize: 12, padding: '2px 4px' }} /> : (d.review_count ?? '—')}</td>
+                        <td>{isEd ? <input type="number" min="0" value={editForm.checkout_count} onChange={e => setF('checkout_count', e.target.value)} style={{ width: 70, fontSize: 12, padding: '2px 4px' }} /> : (d.checkout_count ?? '—')}</td>
+                        <td style={{ fontWeight: 500, color: accent }}>
+                          {d.checkout_count > 0 ? `${((d.review_count / d.checkout_count) * 100).toFixed(1)}%` : '—'}
+                        </td>
+                        <td style={{ whiteSpace: 'nowrap' }}>
+                          {isEd ? (
+                            <>
+                              <button className="btn-edit-save" onClick={saveEdit} title="저장">✓</button>
+                              <button className="btn-edit-cancel" onClick={cancelEdit} title="취소">✕</button>
+                            </>
+                          ) : (
+                            <>
+                              <button className="btn-edit" onClick={() => startEdit(d)} title="수정">✎</button>
+                              <button className="delete-btn" onClick={() => del(d.id)}>×</button>
+                            </>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -488,6 +523,32 @@ export function TabScoreDist({ propertyId, accent }) {
     await fetch(`/api/agoda-score-dist?id=${id}`, { method: 'DELETE' });
     load();
   };
+
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({});
+
+  const startEdit = (d) => {
+    setEditingId(d.id);
+    setEditForm({
+      week_start: fmtWeek(d.week_start),
+      score_1: d.score_1 ?? 0, score_2: d.score_2 ?? 0, score_3: d.score_3 ?? 0,
+      score_4: d.score_4 ?? 0, score_5: d.score_5 ?? 0, score_6: d.score_6 ?? 0,
+      score_7: d.score_7 ?? 0, score_8: d.score_8 ?? 0, score_9: d.score_9 ?? 0,
+      score_10: d.score_10 ?? 0, weekly_avg_score: d.weekly_avg_score ?? '',
+    });
+  };
+  const cancelEdit = () => { setEditingId(null); setEditForm({}); };
+  const saveEdit = async () => {
+    await fetch(`/api/agoda-score-dist?id=${editingId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(editForm),
+    });
+    setEditingId(null);
+    setEditForm({});
+    load();
+  };
+  const setF = (k, v) => setEditForm(f => ({ ...f, [k]: v }));
 
   const saveVoc = async (e) => {
     e.preventDefault();
@@ -828,22 +889,47 @@ export function TabScoreDist({ propertyId, accent }) {
                   <th>주차</th>
                   {BANDS.map(b => <th key={b.key} style={{ color: b.color, fontSize: 11 }}>{b.label}</th>)}
                   <th>합계</th>
+                  <th>평균</th>
                   <th />
                 </tr>
               </thead>
               <tbody>
                 {[...data].reverse().map(d => {
                   const total = BANDS.reduce((s, b) => s + (parseInt(d[b.key])||0), 0);
+                  const isEd = d.id === editingId;
                   return (
-                    <tr key={d.id}>
-                      <td>{fmtWeek(d.week_start)}</td>
+                    <tr key={d.id} style={isEd ? { background: 'var(--bg, #fafafa)' } : {}}>
+                      <td>
+                        {isEd
+                          ? <input type="date" value={editForm.week_start} onChange={e => setF('week_start', e.target.value)} style={{ fontSize: 12, padding: '2px 4px' }} />
+                          : fmtWeek(d.week_start)}
+                      </td>
                       {BANDS.map(b => (
                         <td key={b.key} style={{ color: b.color, fontSize: 12 }}>
-                          {parseInt(d[b.key])||0}
+                          {isEd
+                            ? <input type="number" min="0" value={editForm[b.key] ?? 0} onChange={e => setF(b.key, e.target.value)} style={{ width: 48, fontSize: 12, padding: '2px 3px' }} />
+                            : (parseInt(d[b.key])||0)}
                         </td>
                       ))}
-                      <td style={{ fontWeight: 500 }}>{total}</td>
-                      <td><button className="delete-btn" onClick={() => del(d.id)}>×</button></td>
+                      <td style={{ fontWeight: 500 }}>{isEd ? '—' : total}</td>
+                      <td>
+                        {isEd
+                          ? <input type="number" min="0" max="10" step="0.1" value={editForm.weekly_avg_score ?? ''} onChange={e => setF('weekly_avg_score', e.target.value)} style={{ width: 56, fontSize: 12, padding: '2px 3px' }} />
+                          : (d.weekly_avg_score != null ? Number(d.weekly_avg_score).toFixed(1) : '—')}
+                      </td>
+                      <td style={{ whiteSpace: 'nowrap' }}>
+                        {isEd ? (
+                          <>
+                            <button className="btn-edit-save" onClick={saveEdit} title="저장">✓</button>
+                            <button className="btn-edit-cancel" onClick={cancelEdit} title="취소">✕</button>
+                          </>
+                        ) : (
+                          <>
+                            <button className="btn-edit" onClick={() => startEdit(d)} title="수정">✎</button>
+                            <button className="delete-btn" onClick={() => del(d.id)}>×</button>
+                          </>
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
@@ -909,6 +995,26 @@ export function TabComplaints({ propertyId, accent }) {
     await fetch(`/api/agoda-complaints?id=${id}`, { method: 'DELETE' });
     load();
   };
+
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({});
+
+  const startEdit = (d) => {
+    setEditingId(d.id);
+    setEditForm({ week_start: fmtWeek(d.week_start), room_complaints: d.room_complaints ?? 0, bathroom_complaints: d.bathroom_complaints ?? 0, memo: d.memo ?? '' });
+  };
+  const cancelEdit = () => { setEditingId(null); setEditForm({}); };
+  const saveEdit = async () => {
+    await fetch(`/api/agoda-complaints?id=${editingId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(editForm),
+    });
+    setEditingId(null);
+    setEditForm({});
+    load();
+  };
+  const setF = (k, v) => setEditForm(f => ({ ...f, [k]: v }));
 
   // 1~2월 데이터로 기준선 계산 (주별 평균)
   const baseline = data.filter(d => { const m = parseInt(d.week_start?.slice(5,7)); return m===1||m===2; });
@@ -1138,15 +1244,46 @@ export function TabComplaints({ propertyId, accent }) {
               <table className="history-table">
                 <thead><tr><th>주차</th><th>객실 정비</th><th>욕실 청결</th><th>메모</th><th /></tr></thead>
                 <tbody>
-                  {[...data].reverse().map(d => (
-                    <tr key={d.id}>
-                      <td>{fmtWeek(d.week_start)}</td>
-                      <td style={{ color: '#E84393', fontWeight: 500 }}>{d.room_complaints ?? 0}건</td>
-                      <td style={{ color: '#1F72B8', fontWeight: 500 }}>{d.bathroom_complaints ?? 0}건</td>
-                      <td style={{ fontSize: 12, color: 'var(--text-2)' }}>{d.memo || '—'}</td>
-                      <td><button className="delete-btn" onClick={() => del(d.id)}>×</button></td>
-                    </tr>
-                  ))}
+                  {[...data].reverse().map(d => {
+                    const isEd = d.id === editingId;
+                    return (
+                      <tr key={d.id} style={isEd ? { background: 'var(--bg, #fafafa)' } : {}}>
+                        <td>
+                          {isEd
+                            ? <input type="date" value={editForm.week_start} onChange={e => setF('week_start', e.target.value)} style={{ fontSize: 12, padding: '2px 4px' }} />
+                            : fmtWeek(d.week_start)}
+                        </td>
+                        <td style={{ color: '#E84393', fontWeight: 500 }}>
+                          {isEd
+                            ? <input type="number" min="0" value={editForm.room_complaints} onChange={e => setF('room_complaints', e.target.value)} style={{ width: 64, fontSize: 12, padding: '2px 4px' }} />
+                            : `${d.room_complaints ?? 0}건`}
+                        </td>
+                        <td style={{ color: '#1F72B8', fontWeight: 500 }}>
+                          {isEd
+                            ? <input type="number" min="0" value={editForm.bathroom_complaints} onChange={e => setF('bathroom_complaints', e.target.value)} style={{ width: 64, fontSize: 12, padding: '2px 4px' }} />
+                            : `${d.bathroom_complaints ?? 0}건`}
+                        </td>
+                        <td style={{ fontSize: 12, color: 'var(--text-2)' }}>
+                          {isEd
+                            ? <input type="text" value={editForm.memo} onChange={e => setF('memo', e.target.value)} style={{ width: '100%', fontSize: 12, padding: '2px 4px' }} />
+                            : (d.memo || '—')}
+                        </td>
+                        <td style={{ whiteSpace: 'nowrap' }}>
+                          {isEd ? (
+                            <>
+                              <button className="btn-edit-save" onClick={saveEdit} title="저장">✓</button>
+                              <button className="btn-edit-cancel" onClick={cancelEdit} title="취소">✕</button>
+                            </>
+                          ) : (
+                            <>
+                              <button className="btn-edit" onClick={() => startEdit(d)} title="수정">✎</button>
+                              <button className="delete-btn" onClick={() => del(d.id)}>×</button>
+                            </>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

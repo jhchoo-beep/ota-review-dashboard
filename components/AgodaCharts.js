@@ -1119,7 +1119,7 @@ export function TabComplaints({ propertyId, accent }) {
         scales: {
           y: {
             beginAtZero: true,
-            suggestedMax: Math.max(...[...room, ...bath].filter(v => v != null && !isNaN(v)), 0) + 5,
+            suggestedMax: Math.max(...[...room, ...bath].filter(v => v != null && !isNaN(v)), 0) + 2,
             ticks: { stepSize: 1, callback: v => `${v}건` },
             grid: { color: 'rgba(128,128,128,0.1)' },
           },

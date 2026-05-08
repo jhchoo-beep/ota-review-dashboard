@@ -1300,74 +1300,53 @@ export function TabComplaints({ propertyId, accent }) {
 }
 
 // ────────────────────────────────────────────────────────────────────────
-// OKR 탭 ── 9.0점 달성 트래커
-// 도넛(진행률) + 지표카드 + 진행바 + 0.1점 단계 테이블(슬라이더)
+// OKR 탭 ── 점수 달성 트래커 (모든 OTA 공통)
 // ────────────────────────────────────────────────────────────────────────
-export function TabOKR({ propertyId, accent }) {
-  const [latest, setLatest] = useState(null);
-  const [newAvg, setNewAvg] = useState(9.5);
-  const TARGET = 9.0;
-  const BASE = 8.0;
 
-  useEffect(() => {
-    (async () => {
-      const map = await fetch('/api/reviews/latest').then(r => r.json());
-      setLatest(map[propertyId] ?? null);
-    })();
-  }, [propertyId]);
+function OKRTrackerSingle({ curScore, curCount, target, base, max, accent, label }) {
+  const [newAvg, setNewAvg] = useState(() => target + (max - target) / 2);
 
-  if (!latest) return (
-    <div className="panel-body">
-      <div className="empty-state"><p>대시보드 탭에서 점수를 입력하면 OKR 트래커가 활성화됩니다</p></div>
-    </div>
-  );
-
-  const curScore = parseFloat(latest.overall_score);
-  const curCount = parseInt(latest.review_count) || 0;
-  const achieved = curScore >= TARGET;
-
-  // 도넛 계산 (8.0 → 9.0 기준)
-  const progPct = Math.min(Math.max((curScore - BASE) / (TARGET - BASE), 0), 1);
+  const achieved = curScore >= target;
+  const stepMax = Math.round(target * 10);
+  const progPct = Math.min(Math.max((curScore - base) / (target - base), 0), 1);
   const R = 62;
   const CIRC = 2 * Math.PI * R;
   const fillDash = (CIRC * progPct).toFixed(1);
-  const gapDash = (CIRC * (1 - progPct)).toFixed(1);
   const restDash = (CIRC * (1 - progPct)).toFixed(1);
   const restOffset = (-CIRC * progPct).toFixed(1);
 
-  // 0.1점 단계별 필요 리뷰 계산
   const steps = [];
-  for (let i = Math.round(curScore * 10) + 1; i <= 90; i++) {
+  for (let i = Math.round(curScore * 10) + 1; i <= stepMax; i++) {
     steps.push(i / 10);
   }
-  function calcNeeded(target) {
-    if (curScore >= target) return 0;
-    if (newAvg <= target) return Infinity;
-    return Math.ceil((target * curCount - curScore * curCount) / (newAvg - target));
+
+  function calcNeeded(t) {
+    if (curScore >= t) return 0;
+    if (newAvg <= t) return Infinity;
+    return Math.ceil((t * curCount - curScore * curCount) / (newAvg - t));
   }
 
   return (
-    <div className="panel-body">
-      <h3 className="section-title">OKR 트래커 — 9.0점 달성</h3>
-      <p className="ag-desc">대시보드 탭 최신 기록 기준 자동 연동 · 기준선 8.0점 → 목표 9.0점</p>
+    <>
+      {label && (
+        <div style={{ fontWeight: 600, fontSize: 15, color: accent, marginBottom: 12, paddingBottom: 8, borderBottom: `2px solid ${accent}22` }}>
+          {label}
+        </div>
+      )}
 
       {/* 상단: 도넛 + 지표카드 */}
       <div className="okr-top">
-
-        {/* 도넛 */}
         <div className="okr-donut-wrap">
           <div className="okr-donut">
             <svg width="160" height="160" viewBox="0 0 160 160">
               <circle cx="80" cy="80" r={R} fill="none"
                 stroke="var(--color-background-secondary)" strokeWidth="18" />
-              {/* 달성 호 */}
               <circle cx="80" cy="80" r={R} fill="none"
                 stroke={achieved ? '#1D9E75' : accent}
                 strokeWidth="18"
                 strokeDasharray={`${fillDash} ${CIRC}`}
                 strokeLinecap="round"
                 style={{ transform: 'rotate(-90deg)', transformOrigin: '80px 80px' }} />
-              {/* 잔여 호 */}
               {!achieved && (
                 <circle cx="80" cy="80" r={R} fill="none"
                   stroke="#FAEEDA"
@@ -1379,7 +1358,7 @@ export function TabOKR({ propertyId, accent }) {
             </svg>
             <div className="okr-donut-label">
               <div className="okr-donut-score">{curScore.toFixed(1)}</div>
-              <div className="okr-donut-target">/ 9.0 목표</div>
+              <div className="okr-donut-target">/ {target.toFixed(1)} 목표</div>
             </div>
           </div>
           <div className="okr-donut-legend">
@@ -1396,12 +1375,11 @@ export function TabOKR({ propertyId, accent }) {
           </div>
         </div>
 
-        {/* 지표 카드 */}
         <div className="okr-stat-grid">
           <div className="okr-stat-card">
             <div className="okr-stat-lbl">현재 점수</div>
             <div className="okr-stat-val">{curScore.toFixed(1)}</div>
-            <div className="okr-stat-sub">{achieved ? '목표 달성!' : `목표까지 ${(TARGET - curScore).toFixed(1)}점`}</div>
+            <div className="okr-stat-sub">{achieved ? '목표 달성!' : `목표까지 ${(target - curScore).toFixed(1)}점`}</div>
           </div>
           <div className="okr-stat-card">
             <div className="okr-stat-lbl">누적 리뷰</div>
@@ -1410,8 +1388,8 @@ export function TabOKR({ propertyId, accent }) {
           </div>
           <div className="okr-stat-card">
             <div className="okr-stat-lbl">OKR 목표</div>
-            <div className="okr-stat-val">9.0</div>
-            <div className="okr-stat-sub">{achieved ? <span style={{ color: '#1D9E75', fontWeight: 500 }}>달성 완료</span> : 'Agoda 기준'}</div>
+            <div className="okr-stat-val">{target.toFixed(1)}</div>
+            <div className="okr-stat-sub">{achieved ? <span style={{ color: '#1D9E75', fontWeight: 500 }}>달성 완료</span> : `${max}점 만점 기준`}</div>
           </div>
         </div>
       </div>
@@ -1419,14 +1397,14 @@ export function TabOKR({ propertyId, accent }) {
       {/* 진행 바 */}
       {!achieved && (
         <div style={{ marginBottom: 24 }}>
-          <div className="ag-chart-label">9.0점까지 진행률 (기준 8.0점)</div>
+          <div className="ag-chart-label">{target.toFixed(1)}점까지 진행률 (기준 {base.toFixed(1)}점)</div>
           <div style={{ height: 10, background: 'var(--color-background-secondary)', borderRadius: 99, overflow: 'hidden', marginBottom: 5 }}>
             <div style={{ height: '100%', width: `${Math.round(progPct * 100)}%`, background: accent, borderRadius: 99, transition: 'width .5s' }} />
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--color-text-tertiary)' }}>
-            <span>기준 8.0점</span>
+            <span>기준 {base.toFixed(1)}점</span>
             <span style={{ fontWeight: 500, color: accent }}>현재 {curScore.toFixed(1)}점</span>
-            <span>목표 9.0점</span>
+            <span>목표 {target.toFixed(1)}점</span>
           </div>
         </div>
       )}
@@ -1436,7 +1414,7 @@ export function TabOKR({ propertyId, accent }) {
         <div style={{ marginBottom: 20 }}>
           <div className="ag-chart-label">신규 리뷰 평균 점수 가정</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <input type="range" min="9.0" max="10.0" step="0.1"
+            <input type="range" min={target} max={max} step="0.1"
               value={newAvg}
               onChange={e => setNewAvg(parseFloat(e.target.value))}
               style={{ flex: 1 }} />
@@ -1464,13 +1442,13 @@ export function TabOKR({ propertyId, accent }) {
                 </tr>
               </thead>
               <tbody>
-                {steps.map(target => {
-                  const needed = calcNeeded(target);
-                  const pct = Math.round(((curScore - BASE) / (target - BASE)) * 100);
+                {steps.map(t => {
+                  const needed = calcNeeded(t);
+                  const pct = Math.round(((curScore - base) / (t - base)) * 100);
                   const isInfinity = needed === Infinity;
                   return (
-                    <tr key={target}>
-                      <td style={{ fontWeight: 500 }}>{target.toFixed(1)}점</td>
+                    <tr key={t}>
+                      <td style={{ fontWeight: 500 }}>{t.toFixed(1)}점</td>
                       <td style={{ fontWeight: 500, color: isInfinity ? 'var(--color-text-tertiary)' : 'var(--color-text-primary)' }}>
                         {isInfinity ? '계산 불가 (평균 점수 높이세요)' : `${needed.toLocaleString()}개`}
                       </td>
@@ -1498,6 +1476,90 @@ export function TabOKR({ propertyId, accent }) {
           <div style={{ fontSize: 13, color: '#0F6E56' }}>현재 {curScore.toFixed(1)}점 · 누적 리뷰 {curCount.toLocaleString()}개</div>
         </div>
       )}
+    </>
+  );
+}
+
+export function TabOKR({ propertyId, platform = 'agoda', accent }) {
+  const [latest, setLatest] = useState(null);
+
+  const is5Point = ['airbnb', 'nol', 'metasearch'].includes(platform);
+  const isMetaSearch = platform === 'metasearch';
+  const TARGET = is5Point ? 4.5 : 9.0;
+  const BASE = is5Point ? 3.5 : 8.0;
+  const MAX = is5Point ? 5 : 10;
+
+  useEffect(() => {
+    (async () => {
+      const map = await fetch('/api/reviews/latest').then(r => r.json());
+      setLatest(map[propertyId] ?? null);
+    })();
+  }, [propertyId]);
+
+  if (!latest) return (
+    <div className="panel-body">
+      <div className="empty-state"><p>대시보드 탭에서 점수를 입력하면 OKR 트래커가 활성화됩니다</p></div>
+    </div>
+  );
+
+  if (isMetaSearch) {
+    const metaPlatforms = [
+      { label: 'Google', scoreKey: 'google_score', countKey: 'google_count' },
+      { label: 'Kakao', scoreKey: 'kakao_score', countKey: 'kakao_count' },
+    ];
+    return (
+      <div className="panel-body">
+        <h3 className="section-title">OKR 트래커 — {TARGET.toFixed(1)}점 달성</h3>
+        <p className="ag-desc">대시보드 탭 최신 기록 기준 자동 연동 · 기준선 {BASE.toFixed(1)}점 → 목표 {TARGET.toFixed(1)}점</p>
+        {metaPlatforms.map((p, idx) => {
+          const curScore = parseFloat(latest[p.scoreKey]);
+          if (isNaN(curScore)) return (
+            <div key={p.label} style={{ marginBottom: 32 }}>
+              <div style={{ fontWeight: 600, marginBottom: 8 }}>{p.label}</div>
+              <div className="empty-state"><p>점수 없음</p></div>
+            </div>
+          );
+          return (
+            <div key={p.label}>
+              <OKRTrackerSingle
+                curScore={curScore}
+                curCount={parseInt(latest[p.countKey]) || 0}
+                target={TARGET}
+                base={BASE}
+                max={MAX}
+                accent={accent}
+                label={p.label}
+              />
+              {idx < metaPlatforms.length - 1 && (
+                <div style={{ height: 1, background: 'var(--color-border-tertiary)', margin: '32px 0' }} />
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  const curScore = parseFloat(latest.overall_score);
+  if (isNaN(curScore)) return (
+    <div className="panel-body">
+      <div className="empty-state"><p>대시보드 탭에서 점수를 입력하면 OKR 트래커가 활성화됩니다</p></div>
+    </div>
+  );
+  const curCount = parseInt(latest.review_count) || 0;
+
+  return (
+    <div className="panel-body">
+      <h3 className="section-title">OKR 트래커 — {TARGET.toFixed(1)}점 달성</h3>
+      <p className="ag-desc">대시보드 탭 최신 기록 기준 자동 연동 · 기준선 {BASE.toFixed(1)}점 → 목표 {TARGET.toFixed(1)}점</p>
+      <OKRTrackerSingle
+        curScore={curScore}
+        curCount={curCount}
+        target={TARGET}
+        base={BASE}
+        max={MAX}
+        accent={accent}
+      />
     </div>
   );
 }

@@ -948,11 +948,11 @@ function PropertyPanel({ property }) {
         </div>
         <div className="panel-header-right">
           <div className="panel-tabs">
-            {(isAirbnb
-              ? ['dashboard', 'superhost', 'history']
-              : isAgoda
+            {(isAgoda
               ? ['dashboard', 'okr', 'review-rate', 'score-dist', 'complaints', 'history']
-              : ['dashboard', 'history']
+              : isAirbnb
+              ? ['dashboard', 'okr', 'superhost', 'history']
+              : ['dashboard', 'okr', 'history']
             ).map(t => (
               <button key={t} className={`tab-btn ${tab === t ? 'active' : ''}`}
                 style={tab === t ? { borderBottomColor: accent, color: accent } : {}}
@@ -1247,7 +1247,7 @@ function PropertyPanel({ property }) {
       {tab === 'review-rate' && isAgoda && <TabReviewRate propertyId={property.id} accent={accent} />}
       {tab === 'score-dist' && isAgoda && <TabScoreDist propertyId={property.id} accent={accent} />}
       {tab === 'complaints' && isAgoda && <TabComplaints propertyId={property.id} accent={accent} />}
-      {tab === 'okr' && isAgoda && <TabOKR propertyId={property.id} accent={accent} />}
+      {tab === 'okr' && <TabOKR propertyId={property.id} platform={property.platform} accent={accent} />}
 
       {/* 점수 저장 버튼 - 슈퍼호스트 탭일 때 */}
       {tab === 'superhost' && isAirbnb && (

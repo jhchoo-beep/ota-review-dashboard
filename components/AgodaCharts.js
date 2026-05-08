@@ -1502,6 +1502,47 @@ export function TabOKR({ propertyId, platform = 'agoda', accent }) {
     </div>
   );
 
+  if (platform === 'airbnb') {
+    const curScore = parseFloat(latest.overall_score);
+    if (isNaN(curScore)) return (
+      <div className="panel-body">
+        <div className="empty-state"><p>대시보드 탭에서 점수를 입력하면 OKR 트래커가 활성화됩니다</p></div>
+      </div>
+    );
+    const curCount = parseInt(latest.review_count) || 0;
+    return (
+      <div className="panel-body">
+        <h3 className="section-title">OKR 트래커 — Airbnb</h3>
+        <p className="ag-desc">대시보드 탭 최신 기록 기준 자동 연동 · 5점 만점</p>
+        <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 280 }}>
+            <OKRTrackerSingle
+              curScore={curScore}
+              curCount={curCount}
+              target={4.5}
+              base={3.5}
+              max={5}
+              accent={accent}
+              label="OKR 목표 — 4.5점"
+            />
+          </div>
+          <div style={{ width: 1, background: 'var(--color-border-tertiary)', alignSelf: 'stretch', flexShrink: 0 }} />
+          <div style={{ flex: 1, minWidth: 280 }}>
+            <OKRTrackerSingle
+              curScore={curScore}
+              curCount={curCount}
+              target={4.8}
+              base={3.5}
+              max={5}
+              accent={accent}
+              label="슈퍼호스트 평점 목표 — 4.8점"
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (isMetaSearch) {
     const metaPlatforms = [
       { label: 'Google', scoreKey: 'google_score', countKey: 'google_count' },
